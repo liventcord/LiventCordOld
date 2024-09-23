@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User List</title>
+    <link rel="stylesheet" type="text/css" href="/static/css/style.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #1e1e1e;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            overflow-y: auto;
+            overflow-x:hidden;
+            user-select: text;
+        }
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #333;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+        }
+        h1 {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        .user {
+            margin-bottom: 15px;
+            padding: 15px;
+            background-color: #444;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        .user p {
+            margin: 5px 0;
+            color: #fff;
+        }
+        .user strong {
+            color: #ffc107;
+        }
+        .user-count {
+            display: block;
+            margin-bottom: 10px; /* Adjust as needed */
+        }
+    </style>
+</head>
+<body>
+    
+
+
+    <div class="container">
+        <h1>User List</h1>
+        <div id="user-counts" class="user-count">Total: 150 | Online: 100 | Offline: 50</div>
+        {% for user in users %}
+            <div class="user">
+                <p><strong>ID:</strong> {{ user.user_id }}</p>
+                <p><strong>Email:</strong> {{ user.email }}</p>
+                <p><strong>Nickname:</strong> {{ user.nickname }} {{user.discriminator}}</p>
+                <p><strong>Online Status:</strong> {{ user.is_online }}</p>
+            </div>
+        {% endfor %}
+    </div>
+
+    <div id="user-list">
+        <ul>
+    </div>
+    <script>
+
+        const fullUrl = window.location.href;
+        const urlObject = new URL(fullUrl);
+        const baseUrl = urlObject.protocol + '//' + urlObject.host; // Removed trailing slash
+
+        const userList = document.getElementById('user-list'); // Removed duplicate declaration
+        const defaultProfileImageUrl = baseUrl + '/static/profiles/guest.png';
+        const users = {{ users|tojson }};
+
+        const totalCount = users.length;
+        const onlineCount = countOnlineUsers(users);
+        const offlineCount = countOfflineUsers(users);
+        const totalCountText = `Total: ${totalCount}`;
+        const onlineCountText = `Online: ${onlineCount}`;
+        const offlineCountText = `Offline: ${offlineCount}`;
+        const userCountsText = `${totalCountText} | ${onlineCountText} | ${offlineCountText}`;
+        document.getElementById('user-counts').innerText = userCountsText;
+
+        function countOnlineUsers(users) {
+            return users.filter(user => user.is_online).length;
+        }
+
+        function countOfflineUsers(users) {
+            return users.filter(user => !user.is_online).length;
+        }
+        function refreshUsers() {
+            const password = 'SDHUFH217YEJWDR217YUSDFH2CJBDF12731'; 
+            fetch('/updateUsersForAdmin', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ password: password }) 
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch user data');
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log(data); 
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        }
+        refreshUsers();
+        setTimeout(() => {
+            refreshUsers();
+        }, 5000);
+        
+        updateUserList(users);
+
+        function updateUserList(users) {
+            userList.innerHTML = '';
+            const tableWrapper = document.createElement('div');
+            tableWrapper.classList.add('user-table-wrapper');
+            const table = document.createElement('table');
+            table.classList.add('user-table');
+            const tbody = document.createElement('tbody');
+
+            renderTitle('ÇEVRİM İÇİ', tbody);
+            renderUsers(users, tbody, true); // Render online users
+            renderTitle('ÇEVRİM DIŞI', tbody);
+            renderUsers(users, tbody, false); // Render offline users
+
+            table.appendChild(tbody);
+            tableWrapper.appendChild(table);
+            userList.appendChild(tableWrapper);
+        }
+        
+        function renderTitle(titleText, tbody) {
+            const titleRow = document.createElement('tr');
+            const titleCell = document.createElement('td');
+            titleCell.setAttribute('colspan', '2');
+            titleCell.innerText = titleText;
+            titleCell.style.fontSize = '12px';
+            titleCell.style.color = '#6E6E6E';
+            titleRow.appendChild(titleCell);
+            tbody.appendChild(titleRow);
+        }
+        
+        function createBubble(isOnline) {
+            const bubble = document.createElement('span');
+            bubble.classList.add('status-bubble');
+            bubble.style.color = 'white';
+            bubble.style.padding = '6px 6px'; 
+            bubble.style.borderRadius = '20px'; 
+            bubble.style.position = 'absolute';
+            bubble.style.marginLeft = '30px';
+            bubble.style.marginTop = '30px';
+            bubble.style.border = '5.5px solid #2f3136';
+        
+            if (isOnline) {
+                bubble.style.backgroundColor = '#23a55a'; // Green color for online users
+            } else {
+                //bubble.style.opacity = 0;
+                bubble.style.backgroundColor = '#ffffff'; // Red color for offline users
+            }
+        
+            return bubble;
+        }
+        
+        function renderUsers(users, tbody, isOnline) {
+            for (const [userId, userData] of Object.entries(users)) {
+                if (userData.is_online === isOnline) {
+                    const tr = document.createElement('tr');
+                    const profileTd = document.createElement('td');
+                    const nameTd = document.createElement('td');
+                    const userDiv = document.createElement('div');
+                    userDiv.textContent = userData.nickname;
+                    const profileImg = document.createElement('img');
+                    if (!isOnline) {
+                        userDiv.classList.add('offline'); // Add offline class for styling
+                    }
+        
+                    const bubble = createBubble(isOnline);
+                    profileImg.style.transition = 'border-radius 0.5s ease-out';
+                    bubble.style.transition = 'opacity 0.5s ease-in-out';
+        
+                    profileImg.addEventListener('mouseover', function() {
+                        this.style.borderRadius = '0px';
+                        bubble.style.opacity = 0; // Directly set opacity to 0
+                    });
+        
+                    profileImg.addEventListener('mouseout', function() {
+                        this.style.borderRadius = '25px';
+                        bubble.style.opacity = 1; // Directly set opacity to 1
+                    });
+                    profileTd.appendChild(bubble);
+                    
+                    
+                    profileImg.style.width = '50px';
+                    profileImg.style.height = '50px';
+                    profileImg.style.borderRadius = '50%';
+                    const rootUrl = window.location.origin; 
+
+                    const imageUrl = `${rootUrl}/static/profiles/${userData.nickname}.png`;
+
+                    const img = new Image();
+                    img.onload = function() {
+                        profileImg.src = imageUrl;
+                    };
+                    img.onerror = function() {
+                        console.log(imageUrl);
+                        profileImg.src = defaultProfileImageUrl;
+                    };
+                    img.src = imageUrl;
+                    profileTd.appendChild(profileImg);
+                    nameTd.appendChild(userDiv);
+                    tr.appendChild(profileTd);
+                    tr.appendChild(nameTd);
+                    tbody.appendChild(tr);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

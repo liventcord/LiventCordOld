@@ -1,0 +1,1 @@
+**lib/**, **bin/**, **lib64**, **Discord_files**, **logs**,**/static/404_files*,**yedek**,**main.py**,**static/fonts**,**static/vendor**,**static/css/fullinvite.min.css**,**static/js/fullscript.js**

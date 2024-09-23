@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" id="favicon" type="image/png" href="/static/images/icons/icon.png">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LiventCord</title>
+    
+    <link rel="stylesheet" href="/static/css/friendstyle.css">
+    <link rel="stylesheet" href="/static/css/style.css">
+    <script src="/static/js/friendscript.js"></script> 
+    <script src="/static/js/script.js"></script> 
+    
+</head>
+<style>
+    .dropdown-button {
+        position: relative; 
+        padding-right: 24px;
+        font-size: 16px; 
+    }
+      
+    .dropdown-button svg {
+    width: 35px; 
+    height: 35px;
+    vertical-align: middle; 
+    }
+      
+</style>
+<body>
+
+    <div id="channel-list">
+
+        <div class="friend-container dm-selected" id="friend-container-item">
+            <div id="friend-icon">
+                <svg xmlns="http://www.w3.org/2000/svg" id="friendiconsvg" width="24" height="24" fill="white"  viewBox="0 0 24 24">
+                    <path d="M13 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"></path>
+                    <path d="M3 5v-.75C3 3.56 3.56 3 4.25 3s1.24.56 1.33 1.25C6.12 8.65 9.46 12 13 12h1a8 8 0 0 1 8 8 2 2 0 0 1-2 2 .21.21 0 0 1-.2-.15 7.65 7.65 0 0 0-1.32-2.3c-.15-.2-.42-.06-.39.17l.25 2c.02.15-.1.28-.25.28H9a2 2 0 0 1-2-2v-2.22c0-1.57-.67-3.05-1.53-4.37A15.85 15.85 0 0 1 3 5Z"></path>
+                </svg>
+            </div>
+            <button class="pendingAlert" id="pendingAlertLeft"> </button> 
+            <div class="friend-label">Arkadaşlar</div>
+        </div>
+        <span id="dms-title">DİREKT MESAJLAR</span>
+        <div id="dm-container-parent"></div>
+        <ul style="width:310%;"><ul>
+    </div>
+
+    <div id="chat-container">
+        
+        <div id="chat-top-bar">
+            <div id="newMessagesBar" onclick="readCurrentMessages()">
+                <span id="newMessagesText">30 Haziran 2024'da 00:57'den beri 3+ yeni mesaj</span>
+                <span>Okunmuş olarak işaretle </span>
+                <svg class="barButtonIcon_cf58b5" aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"><path fill="currentColor" d="M12.66 21.98c.4-.03.56-.51.28-.8l-.06-.06a3 3 0 1 1 4.24-4.24l.53.52c.2.2.5.2.7 0l2.53-2.52a3 3 0 0 1 .64-.5c.14-.07.24-.2.27-.34a10 10 0 1 0-18.24 3.32c.13.19.11.44-.04.61l-2.06 2.37A1 1 0 0 0 2.2 22H12c.22 0 .44 0 .66-.02Z" class=""></path><path fill="currentColor" d="M23.7 17.7a1 1 0 0 0-1.4-1.4L18 20.58l-2.3-2.3a1 1 0 0 0-1.4 1.42l3 3a1 1 0 0 0 1.4 0l5-5Z" class=""></path></svg>
+            </div>
+        </div>
+        <div id="chat-content">
+        </div>
+    </div>
+
+    <div id="friends-popup-container"></div>
+    <div id="friends-container">
+        <div id="addfriendmenu">
+            <div id="addfriendtext"></div>
+            <div id="addfrienddetailtext"></div>
+            <div id="addfriendinput"></div>
+        </div>
+        <img id="wumpusalone" src="/static/images/wumpusalone.png" style="user-select: none;">
+    </div>
+
+
+    <div id="message-input-container">
+
+        <div id="message-input">
+            <button id="file-button">+</button>
+            <div id="image-preview"></div>
+            <button id="emojibtn" class="emojibtn-base" onclick="toggleEmojis()">:)</button>
+            <button id="gifbtn" class="gifbtn-base" onclick="toggleGifs()">GIF</button>
+            <textarea  type="text" id="user-input" class="base-user-input" autocomplete="off" class="autofit" placeholder="# kanalına Mesaj gönder"></textarea>
+            <textarea id="reply-info" readonly autocomplete="off" class="autofit" placeholder="kişisine yanıt veriliyor"></textarea>
+            <button id="reply-close-button" onclick="closeReplyMenu()">X</button>
+        </div>
+        
+    </div>
+    
+
+    <div id="gif-menu"> 
+        <button class="gifs-menu-button" id="gifs-menu-gif">GIF'ler</button>
+        <button class="gifs-menu-button" id="gifs-menu-emoji">Emoji</button>
+        <hr class="vertical-line-long-black" id="gifs-menu-line"> </hr>
+        <input id="gifs-menu-searchbar" autocomplete='off' placeholder="Tenor'da ara">  </input>
+        <div id="gifs-menu-container"> 
+        </div>
+    </div>
+
+    <div id="scroll-to-bottom">
+        <div class="arrow-symbol">﹀</div>
+    </div>
+
+    <div id="guild-container">
+        <div id="guild-name"></div>
+        <button class="searchInput"id="globalSearchInput">Sohbet bul ya da başlat</button>
+        <div id="guild-settings-button">^</div>
+        <div id="guild-settings-dropdown"> 
+
+            <button class="dropdown-button" id="invite-dropdown-button" onclick="openGuildSettingsDd(event)" >İnsanları Davet Et
+                <svg viewBox="5 0 40 40" fill="white" xmlns="http://www.w3.org/2000/svg" style="position:absolute;right:-2px; "  >
+                    <path d="M13 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"></path> <path d="M3 5v-.75C3 3.56 3.56 3 4.25 3s1.24.56 1.33 1.25C6.12 8.65 9.46 12 13 12h1a8 8 0 0 1 8 8 2 2 0 0 1-2 2 .21.21 0 0 1-.2-.15 7.65 7.65 0 0 0-1.32-2.3c-.15-.2-.42-.06-.39.17l.25 2c.02.15-.1.28-.25.28H9a2 2 0 0 1-2-2v-2.22c0-1.57-.67-3.05-1.53-4.37A15.85 15.85 0 0 1 3 5Z"></path>
+                </svg>
+            </button>
+            <button class="dropdown-button" id="settings-dropdown-button" onclick="openGuildSettingsDd(event)">Sunucu Ayarları
+                <svg viewBox="0 0 40 40" fill="white" xmlns="http://www.w3.org/2000/svg" style="position:absolute;right:0px; ">
+                    <path fill="white" fill-rule="evenodd" d="M10.56 1.1c-.46.05-.7.53-.64.98.18 1.16-.19 2.2-.98 2.53-.8.33-1.79-.15-2.49-1.1-.27-.36-.78-.52-1.14-.24-.77.59-1.45 1.27-2.04 2.04-.28.36-.12.87.24 1.14.96.7 1.43 1.7 1.1 2.49-.33.8-1.37 1.16-2.53.98-.45-.07-.93.18-.99.64a11.1 11.1 0 0 0 0 2.88c.06.46.54.7.99.64 1.16-.18 2.2.19 2.53.98.33.8-.14 1.79-1.1 2.49-.36.27-.52.78-.24 1.14.59.77 1.27 1.45 2.04 2.04.36.28.87.12 1.14-.24.7-.95 1.7-1.43 2.49-1.1.8.33 1.16 1.37.98 2.53-.07.45.18.93.64.99a11.1 11.1 0 0 0 2.88 0c.46-.06.7-.54.64-.99-.18-1.16.19-2.2.98-2.53.8-.33 1.79.14 2.49 1.1.27.36.78.52 1.14.24.77-.59 1.45-1.27 2.04-2.04.28-.36.12-.87-.24-1.14-.96-.7-1.43-1.7-1.1-2.49.33-.8 1.37-1.16 2.53-.98.45.07.93-.18.99-.64a11.1 11.1 0 0 0 0-2.88c-.06-.46-.54-.7-.99-.64-1.16.18-2.2-.19-2.53-.98-.33-.8.14-1.79 1.1-2.49.36-.27.52-.78.24-1.14a11.07 11.07 0 0 0-2.04-2.04c-.36-.28-.87-.12-1.14.24-.7.96-1.7 1.43-2.49 1.1-.8-.33-1.16-1.37-.98-2.53.07-.45-.18-.93-.64-.99a11.1 11.1 0 0 0-2.88 0ZM16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" clip-rule="evenodd" class=""></path>
+                </svg>
+            </button>
+            <button class="dropdown-button" id="channel-dropdown-button" onclick="openGuildSettingsDd(event)">Kanal Oluştur
+                <svg viewBox="0 0 40 40" fill="white" xmlns="http://www.w3.org/2000/svg" style="position:absolute;right:0px; ">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M12 23a11 11 0 1 0 0-22 11 11 0 0 0 0 22Zm0-17a1 1 0 0 1 1 1v4h4a1 1 0 1 1 0 2h-4v4a1 1 0 1 1-2 0v-4H7a1 1 0 1 1 0-2h4V7a1 1 0 0 1 1-1Z"></path>
+                </svg>
+            </button>
+            
+            <button class="dropdown-button" id="notifications-dropdown-button" onclick="openGuildSettingsDd(event)">Bildirim Ayarları
+                <svg viewBox="0 0 40 40" fill="white" xmlns="http://www.w3.org/2000/svg" style="position:absolute;right:0px;">
+                    <path fill="white" fill-rule="evenodd" d="M9.7 2.89c.18-.07.32-.24.37-.43a2 2 0 0 1 3.86 0c.05.2.19.36.38.43A7 7 0 0 1 19 9.5v2.09c0 .12.05.24.13.33l1.1 1.22a3 3 0 0 1 .77 2.01v.28c0 .67-.34 1.29-.95 1.56-1.31.6-4 1.51-8.05 1.51-4.05 0-6.74-.91-8.05-1.5-.61-.28-.95-.9-.95-1.57v-.28a3 3 0 0 1 .77-2l1.1-1.23a.5.5 0 0 0 .13-.33V9.5a7 7 0 0 1 4.7-6.61ZM9.18 19.84A.16.16 0 0 0 9 20a3 3 0 1 0 6 0c0-.1-.09-.17-.18-.16a24.86 24.86 0 0 1-5.64 0Z" clip-rule="evenodd"></path>
+                    <path fill="white" d="M15.3 16.7a1 1 0 0 1 1.4-1.4l4.3 4.29V16a1 1 0 1 1 2 0v6a1 1 0 0 1-1 1h-6a1 1 0 1 1 0-2h3.59l-4.3-4.3Z"></path>
+                </svg>
+            </button>
+
+            <button class="dropdown-button" id="exit-dropdown-button" onclick="openGuildSettingsDd(event)">Sunucudan Ayrıl
+                <svg viewBox="0 0 40 40" fill="white" xmlns="http://www.w3.org/2000/svg" style="position:absolute;right:0px;" >
+                    <path fill="white" fill-rule="evenodd" d="M2.75 3.02A3 3 0 0 1 5 2h10a3 3 0 0 1 3 3v7.64c0 .44-.55.7-.95.55a3 3 0 0 0-3.17 4.93l.02.03a.5.5 0 0 1-.35.85h-.05a.5.5 0 0 0-.5.5 2.5 2.5 0 0 1-3.68 2.2l-5.8-3.09A3 3 0 0 1 2 16V5a3 3 0 0 1 .76-1.98Zm1.3 1.95A.04.04 0 0 0 4 5v11c0 .36.2.68.49.86l5.77 3.08a.5.5 0 0 0 .74-.44V8.02a.5.5 0 0 0-.32-.46l-6.63-2.6Z" clip-rule="evenodd"></path>
+                    <path fill="white" d="M15.3 16.7a1 1 0 0 1 1.4-1.4l4.3 4.29V16a1 1 0 1 1 2 0v6a1 1 0 0 1-1 1h-6a1 1 0 1 1 0-2h3.59l-4.3-4.3Z"></path>
+                </svg>
+            </button>
+            
+
+        </div>
+    </div>
+
+
+
+    
+    <div class="vertical-line-long-black" id="vertical-line-long-black-item"></div>
+    <div id="channel-info-container-for-friend">
+        
+        <div id="channel-info-container-for-friend">
+            <div id="channel-info-for-friend">Arkadaşlar</div>
+            <div id="friend-menu-buttons">
+                <hr class="vertical-line">
+                <button id="OnlineButton" class="friend-menu-button" style="background-color:#43444b;">Çevrim İçi</button>
+                <button id="AllButton" class="friend-menu-button">Tümü</button>
+                <button id="PendingButton" class="friend-menu-button">Bekleyen</button>
+                <button class="pendingAlert" id="pendingAlertRight"> </button> 
+                <button id="BlockedButton" class="friend-menu-button">Engellenen</button>
+                <button id="open-friends-button"  class="friend-menu-button" onclick="openAddFriend()" >Arkadaş Ekle</button>
+            </div>
+        </div>
+        
+        
+        <div id="friend-icon-sign">
+            <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" fill="rgb(128 132 142)" viewBox="0 0 24 24">
+                <path d="M13 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z"></path>
+                <path d="M3 5v-.75C3 3.56 3.56 3 4.25 3s1.24.56 1.33 1.25C6.12 8.65 9.46 12 13 12h1a8 8 0 0 1 8 8 2 2 0 0 1-2 2 .21.21 0 0 1-.2-.15 7.65 7.65 0 0 0-1.32-2.3c-.15-.2-.42-.06-.39.17l.25 2c.02.15-.1.28-.25.28H9a2 2 0 0 1-2-2v-2.22c0-1.57-.67-3.05-1.53-4.37A15.85 15.85 0 0 1 3 5Z"></path>
+            </svg>
+            
+        </div>
+    </div>
+
+    <div id="channel-info-container-for-index">
+        <div id="channel-info" class="truncated"></div>
+        <svg x="0" y="0" id="hash-sign"role="img" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M10.99 3.16A1 1 0 1 0 9 2.84L8.15 8H4a1 1 0 0 0 0 2h3.82l-.67 4H3a1 1 0 1 0 0 2h3.82l-.8 4.84a1 1 0 0 0 1.97.32L8.85 16h4.97l-.8 4.84a1 1 0 0 0 1.97.32l.86-5.16H20a1 1 0 1 0 0-2h-3.82l.67-4H21a1 1 0 1 0 0-2h-3.82l.8-4.84a1 1 0 1 0-1.97-.32L15.15 8h-4.97l.8-4.84ZM14.15 14l.67-4H9.85l-.67 4h4.97Z" clip-rule="evenodd" class=""></path></svg>
+        <img id="dm-profile-sign" class="profile-pic"></img>
+        <span class="dm-bubble offline" id="dm-profile-sign-bubble" isoffline="true" style="transition: display 0.5s ease-in-out;"></span>
+    </div>
+    
+
+
+    
+    <div id="toolbaroptions">
+        <div id="tb-call" class="iconWrapper" role="button" aria-label="Sesli Arama Başlat" tabindex="0"><svg x="0" y="0"  aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="currentColor" d="M2 7.4A5.4 5.4 0 0 1 7.4 2c.36 0 .7.22.83.55l1.93 4.64a1 1 0 0 1-.43 1.25L7 10a8.52 8.52 0 0 0 7 7l1.12-2.24a1 1 0 0 1 1.19-.51l5.06 1.56c.38.11.63.46.63.85C22 19.6 19.6 22 16.66 22h-.37C8.39 22 2 15.6 2 7.71V7.4ZM13 3a1 1 0 0 1 1-1 8 8 0 0 1 8 8 1 1 0 1 1-2 0 6 6 0 0 0-6-6 1 1 0 0 1-1-1Z" class=""></path><path fill="currentColor" d="M13 7a1 1 0 0 1 1-1 4 4 0 0 1 4 4 1 1 0 1 1-2 0 2 2 0 0 0-2-2 1 1 0 0 1-1-1Z" class=""></path></svg></div>
+        <div id="tb-video-call" class="iconWrapper" role="button" aria-label="Görüntülü Arama Başlat" tabindex="0"><svg x="0" y="0"  aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="currentColor" d="M4 4a3 3 0 0 0-3 3v10a3 3 0 0 0 3 3h11a3 3 0 0 0 3-3v-2.12a1 1 0 0 0 .55.9l3 1.5a1 1 0 0 0 1.45-.9V7.62a1 1 0 0 0-1.45-.9l-3 1.5a1 1 0 0 0-.55.9V7a3 3 0 0 0-3-3H4Z" class=""></path></svg></div>
+        <div id="tb-pin" class="iconWrapper" id="tb-pin" role="button" onclick="togglePin()" aria-label="Sabitlenmiş Mesajlar" > <svg x="0" y="0" role="img" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"> <path fill="currentColor" d="M19.38 11.38a3 3 0 0 0 4.24 0l.03-.03a.5.5 0 0 0 0-.7L13.35.35a.5.5 0 0 0-.7 0l-.03.03a3 3 0 0 0 0 4.24L13 5l-2.92 2.92-3.65-.34a2 2 0 0 0-1.6.58l-.62.63a1 1 0 0 0 0 1.42l9.58 9.58a1 1 0 0 0 1.42 0l.63-.63a2 2 0 0 0 .58-1.6l-.34-3.64L19 11l.38.38ZM9.07 17.07a.5.5 0 0 1-.08.77l-5.15 3.43a.5.5 0 0 1-.63-.06l-.42-.42a.5.5 0 0 1-.06-.63L6.16 15a.5.5 0 0 1 .77-.08l2.14 2.14Z" class=""></path> <div id="tbpinbubble"></div>  </svg></div>
+        
+        <div id="tb-createdm" class="iconWrapper" role="button" aria-label="DM'ye Arkadaş Ekle" aria-expanded="false" tabindex="0"><svg x="0" y="0"  aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="currentColor" d="M14.5 8a3 3 0 1 0-2.7-4.3c-.2.4.06.86.44 1.12a5 5 0 0 1 2.14 3.08c.01.06.06.1.12.1ZM16.62 13.17c-.22.29-.65.37-.92.14-.34-.3-.7-.57-1.09-.82-.52-.33-.7-1.05-.47-1.63.11-.27.2-.57.26-.87.11-.54.55-1 1.1-.92 1.6.2 3.04.92 4.15 1.98.3.27-.25.95-.65.95a3 3 0 0 0-2.38 1.17ZM15.19 15.61c.13.16.02.39-.19.39a3 3 0 0 0-1.52 5.59c.2.12.26.41.02.41h-8a.5.5 0 0 1-.5-.5v-2.1c0-.25-.31-.33-.42-.1-.32.67-.67 1.58-.88 2.54a.2.2 0 0 1-.2.16A1.5 1.5 0 0 1 2 20.5a7.5 7.5 0 0 1 13.19-4.89ZM9.5 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM15.5 22Z" class=""></path><path fill="currentColor" d="M19 14a1 1 0 0 1 1 1v3h3a1 1 0 0 1 0 2h-3v3a1 1 0 0 1-2 0v-3h-3a1 1 0 1 1 0-2h3v-3a1 1 0 0 1 1-1Z" class=""></path></svg></div>
+        <div id="tb-showprofile" style="cursor:pointer;"class="iconWrapper" role="button" aria-label="Kullanıcı Profilini Göster" tabindex="0"><svg style="pointer-events:none;" x="0" y="0"  aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M23 12.38c-.02.38-.45.58-.78.4a6.97 6.97 0 0 0-6.27-.08.54.54 0 0 1-.44 0 8.97 8.97 0 0 0-11.16 3.55c-.1.15-.1.35 0 .5.37.58.8 1.13 1.28 1.61.24.24.64.15.8-.15.19-.38.39-.73.58-1.02.14-.21.43-.1.4.15l-.19 1.96c-.02.19.07.37.23.47A8.96 8.96 0 0 0 12 21a.4.4 0 0 1 .38.27c.1.33.25.65.4.95.18.34-.02.76-.4.77L12 23a11 11 0 1 1 11-10.62ZM15.5 7.5a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Z" clip-rule="evenodd" class=""></path><path fill="currentColor" d="M24 19a5 5 0 1 1-10 0 5 5 0 0 1 10 0Z" class=""></path></svg></div>
+        
+        <div id="tb-search" class="iconWrapper">
+            <input id="channelSearchInput" class="searchInput" oninput="onInputSearchInput()" autocomplete="off" placeholder="Ara">
+            <svg id="searchInputMagnify" role="img" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24">
+                <path fill="currentColor" fill-rule="evenodd" d="M15.62 17.03a9 9 0 1 1 1.41-1.41l4.68 4.67a1 1 0 0 1-1.42 1.42l-4.67-4.68ZM17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z" clip-rule="evenodd" class=""></path>
+            </svg>
+        </div>
+        
+
+        <div  id="tb-inbox" class="iconWrapper" role="button" aria-label="Gelen Kutusu"><svg x="0" y="0" role="img" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M5 2a3 3 0 0 0-3 3v14a3 3 0 0 0 3 3h14a3 3 0 0 0 3-3V5a3 3 0 0 0-3-3H5ZM4 5.5C4 4.67 4.67 4 5.5 4h13c.83 0 1.5.67 1.5 1.5v6c0 .83-.67 1.5-1.5 1.5h-2.65c-.5 0-.85.5-.85 1a3 3 0 1 1-6 0c0-.5-.35-1-.85-1H5.5A1.5 1.5 0 0 1 4 11.5v-6Z" clip-rule="evenodd" class=""></path></svg></div>
+        <div id="tb-help" class="iconWrapper" onclick="openTbHelp()"><svg x="0" y="0"  role="img" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="transparent" class=""></circle><path fill="currentColor" fill-rule="evenodd" d="M12 23a11 11 0 1 0 0-22 11 11 0 0 0 0 22Zm-.28-16c-.98 0-1.81.47-2.27 1.14A1 1 0 1 1 7.8 7.01 4.73 4.73 0 0 1 11.72 5c2.5 0 4.65 1.88 4.65 4.38 0 2.1-1.54 3.77-3.52 4.24l.14 1a1 1 0 0 1-1.98.27l-.28-2a1 1 0 0 1 .99-1.14c1.54 0 2.65-1.14 2.65-2.38 0-1.23-1.1-2.37-2.65-2.37ZM13 17.88a1.13 1.13 0 1 1-2.25 0 1.13 1.13 0 0 1 2.25 0Z" clip-rule="evenodd" class=""></path></svg></div>
+    </div>
+    
+    <!--
+    <div class="iconWrapper" id="tb-notify" role="button" aria-label="Bildirim Ayarları" > <svg x="0" y="0"  role="img" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"> <path fill="currentColor" d="M1.3 21.3a1 1 0 1 0 1.4 1.4l20-20a1 1 0 0 0-1.4-1.4l-20 20ZM3.13 16.13c.11.27.46.28.66.08L15.73 4.27a.47.47 0 0 0-.07-.74 6.97 6.97 0 0 0-1.35-.64.62.62 0 0 1-.38-.43 2 2 0 0 0-3.86 0 .62.62 0 0 1-.38.43A7 7 0 0 0 5 9.5v2.09a.5.5 0 0 1-.13.33l-1.1 1.22A3 3 0 0 0 3 15.15v.28c0 .24.04.48.13.7ZM18.64 9.36c.13-.13.36-.05.36.14v2.09c0 .12.05.24.13.33l1.1 1.22a3 3 0 0 1 .77 2.01v.28c0 .67-.34 1.29-.95 1.56-1.31.6-4 1.51-8.05 1.51-.46 0-.9-.01-1.33-.03a.48.48 0 0 1-.3-.83l8.27-8.28ZM9.18 19.84A.16.16 0 0 0 9 20a3 3 0 1 0 6 0c0-.1-.09-.17-.18-.16a24.84 24.84 0 0 1-5.64 0Z" class=""></path> </svg> </div>
+    -->
+
+    
+    
+    <div id="image-preview-container" onclick="hideImagePreviewRequest(event)">
+        <img id="preview-image" src="/static/images/defaultmediaimage.png">
+        <a id="preview-image-button">Tarayıcıda aç</a>
+    </div>
+
+    <div id="json-preview-container"onclick="hideJsonPreview(event)">
+        <pre id="json-preview-element"  class="jsonContainer"style="whiteSpace: pre-wrap; user-select: text;">...</pre>
+    </div>
+    
+    <div id="drop-zone">
+        <div class="outer-parent" style="display: flex; -webkit-user-drag: none;">
+            <div class="pop-up" style="background-color: rgb(88, 101, 242);">
+                <div id="channelNameContainer">
+                    <p id="invite-users-channel-name-hash" style="color: white;"># ${currentChannelName} kanalına yükle</p>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+    <input type="file" id="fileInput" style="display: none;" accept="image/*" multiple>
+
+
+    
+    <script>
+        
+        
+        
+    </script>
+    <hr class="horizontal-line">
+
+
+    
+    <div id="user-list" class="friendactive">
+        
+    </div>
+
+    <div id="searchbar"></div>
+        
+
+        
+</body>
+</html>

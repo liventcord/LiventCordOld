@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Chat</title>
+</head>
+<body>
+    <h2>Welcome to the chat</h2>
+    <form action="/send_message" method="post">
+        <label>Select User:</label>
+        <select name="recipient_id">
+            {% for user in users %}
+                <option value="{{ user.id }}">{{ user.username }}</option>
+            {% endfor %}
+        </select>
+        <label>Message:</label>
+        <input type="text" name="message" required>
+        <button type="submit">Send</button>
+    </form>
+
+    <h2>Your Messages</h2>
+    <div id="messages"></div>
+
+    <script>
+        async function fetchMessages() {
+            const recipientId = document.querySelector('select[name="recipient_id"]').value;
+            const response = await fetch(`/get_messages/${recipientId}`);
+            const data = await response.json();
+            const messagesDiv = document.getElementById('messages');
+            messagesDiv.innerHTML = '';
+            data.messages.forEach(msg => {
+                const messageElement = document.createElement('p');
+                messageElement.textContent = msg[1];
+                messagesDiv.appendChild(messageElement);
+            });
+        }
+
+        document.querySelector('select[name="recipient_id"]').addEventListener('change', fetchMessages);
+    </script>
+</body>
+</html>

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>You are authenticated</title>
+    <link rel="stylesheet" href="/static/css/fullinvite.min.css">
+        
+    <style>
+        body {
+
+            background-image: black;
+            background-repeat: no-repeat;
+            background-size: cover;
+            color: white;
+        }
+        .center-wrapper {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh; 
+
+        }
+
+
+    </style>
+</head>
+<body>
+        
+    <div>
+        <div class="center-wrapper">
+            <form data-theme="dark" data-disable-adaptive-theme="true" class="authBox_b83a05 theme-dark" style="background-color: rgb(49, 51, 56);;" >
+                <div class="discordLogo_b83a05"></div>
+                <div class="centeringWrapper_b83a05" >
+                    <div class="container_f9c402">
+                        <svg width="64" height="64" class="svg_d48241 guildIcon_f9c402" viewBox="0 0 64 64">
+                            <foreignObject x="0" y="0" width="64" height="64" overflow="visible" mask="url(#svg-mask-squircle)">
+                                <div class="icon_f11207 iconSizeLarger_f11207 iconActiveLarger_f11207" style="background-image: url({{server_pic_url}});">
+                                </div>
+                            </foreignObject>
+                        </svg>
+                        <div class="text-md/normal_dc00ef" data-text-variant="text-md/normal" style="color: var(--header-secondary);">
+                            {{creator_name}} seni katılmaya davet etti
+                        </div>
+                        <h1 class="heading-xl/semibold_dc00ef defaultColor_e9e35f title_b83a05 title_f9c402" data-text-variant="heading-xl/semibold" style="color: var(--header-primary);">
+                            {{}}
+                        </h1>
+                        <div class="flex_bba380 horizontal_bba380 justifyCenter_ec1a20 alignStretch_ec1a20 noWrap_ec1a20 activityCount_f9c402" style="flex: 1 1 auto;">
+                            <div class="pill_b83a05">
+                                <i class="pillIconTotal_b83a05 pillIcon_b83a05"></i>
+                                <span class="defaultColor_a595eb text-sm/normal_dc00ef pillMessage_b83a05" data-text-variant="text-sm/normal">6 Üye</span>
+                                <span class="defaultColor_a595eb text-sm/normal_dc00ef pillMessage_b83a05" data-text-variant="text-sm/normal">6 Üye</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="block_b83a05 marginTop40_f7730b">
+                        <h1 class="h5_c46f6a eyebrow_c46f6a defaultMarginh5_c46f6a">Görünen Ad</h1>
+                        <div class="marginBottom8_f7730b">
+                            <div class="inputWrapper_f8bc55">
+                                <input class="inputDefault_f8bc55 input_f8bc55"style="border: 2 px solid black; background-color: rgba(30,31,34, 0.486);   type="text" placeholder="Herkes sana nasıl hitap etmeli?" maxlength="999" id="uid_8" aria-labelledby=":r0:" value="">
+                            </div>
+                        </div>
+                        <div class="text-sm/normal_dc00ef" data-text-variant="text-sm/normal" style="color: var(--header-secondary);">
+                            Diğerleri seni böyle görüyor. Özel karakterler ve emojiler ekleyebilirsin.
+                        </div>
+                        <div class="marginTop20_f7730b">
+                            <button type="submit" class="button_b83a05 button_dd4f85 lookFilled_dd4f85 colorBrand_dd4f85 sizeLarge_dd4f85 fullWidth_dd4f85 grow_dd4f85">
+                                <div class="contents_dd4f85">Devam Et</div>
+                            </button>
+                        </div>
+                        
+                        <button type="button" class="marginTop20_f7730b linkButton_b83a05 button_dd4f85 lookLink_dd4f85 lowSaturationUnderline_c7819f colorLink_dd4f85 sizeMin_dd4f85 grow_dd4f85">
+                            <h1 class="contents_dd4f85" style="color:rgb(14, 135, 1979); ">Zaten bir hesabın var mı?</h1>
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>

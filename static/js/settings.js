@@ -2676,7 +2676,7 @@ socket.on('reconnect', () => {
 
 socket.on('disconnect', (reason, details) => {
     console.log('Disconnected from server.', reason);
-    const domains = ['https://liventcord.serveo.net', 'https://liventcord.loophole.site', 'https://liventcord.bore.digital'];
+    const domains = ['https://liventcord.serveo.net', 'https://liventcord.loophole.site'];
     isDisconnected = true;
     const checkDomain = (domain) => {
         const img = new Image();

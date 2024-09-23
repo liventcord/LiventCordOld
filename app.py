@@ -353,7 +353,7 @@ def generate_reset_token(email):
     return token
 
 def origin_is_trusted(origin):
-    trusted_origins = ['https://liventcord.bore.digital', 'https://liventcord.loophole.site','https://liventcord.serveo.net']#,'http://localhost'
+    trusted_origins = ['https://liventcord.loophole.site','https://liventcord.serveo.net']#,'http://localhost'
     return origin in trusted_origins
 
 

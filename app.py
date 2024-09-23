@@ -262,7 +262,6 @@ def check_domains():
         'liventcord.loophole.site': domain2_active
     }
 
-    response.headers['Cache-Control'] = 'no-store'
     return jsonify(response)
 
         

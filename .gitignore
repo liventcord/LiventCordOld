@@ -1,0 +1,10 @@
+# Ignore the following directories
+databases/
+yedek/
+logs/
+uploads/
+utils/__pycache__/
+
+# Ignore specific files
+__pycache__/
+whatsapp.py

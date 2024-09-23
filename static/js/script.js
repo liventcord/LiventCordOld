@@ -1462,7 +1462,7 @@ async function displayWebPreview(messageElement, url) {
 
         const requestPromise = (async () => {
             try {
-                const response = await fetch(`https://liventcord.efekantunc0.workers.dev/?url=${encodeURIComponent(url)}`);
+                const response = await fetch(`https://liventcord-link-worker.efekantunc0.workers.dev/?url=${encodeURIComponent(url)}`);
                 const data = await response.json();
                 if (!data.title && !data.description) {
                     console.log('No metadata found.');

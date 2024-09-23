@@ -249,6 +249,25 @@ def users():
     return render_template('users.html', users=users_info)
 
 
+domain1 = 'liventcord.serveo.net'
+domain2 = 'liventcord.loophole.site'
+
+domain1_active = True
+domain2_active = True
+
+@app.route('/check_domains', methods=['GET'])
+def check_domains():
+    response = {
+        'liventcord.serveo.net': domain1_active,
+        'liventcord.loophole.site': domain2_active
+    }
+
+    response.headers['Cache-Control'] = 'no-store'
+    return jsonify(response)
+
+        
+
+
 
 @app.route('/connected_users', methods=['GET'])
 @auth.login_required

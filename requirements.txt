@@ -1,0 +1,11 @@
+Flask
+Flask-SocketIO
+Flask-Mail
+Flask-HTTPAuth
+Werkzeug
+redis
+pytz
+colorama
+psycopg2-binary
+bcrypt
+requests

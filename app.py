@@ -22,8 +22,8 @@ isRateLimiting = False
 
 project_path = os.path.dirname(os.path.realpath(__file__))
 
-USERNAME = 'ADMIN'
-PASSWORD = '281'
+USERNAME = os.getenv('ADMIN_USERNAME')
+PASSWORD = os.getenv('ADMIN_PASSWORD')
 
 
 print("Should emit when user joins/leaves guild")
@@ -121,10 +121,15 @@ def get_common_data(email,user_id):
     masked_email = email_manager.mask_email(email)
     return nickname, discriminator, guilds_data, masked_email
 
+@app.route('/download', methods=['GET', 'POST'])
+def download_page():
+    path = os.path.join(project_path, "templates", "download.html")
+    return send_file(path)
+
 @app.route('/', methods=['GET', 'POST'])
 def main_page():
     return render_template('newdc.html')
-
+    
 @app.route('/app', methods=['GET', 'POST'])
 def app_main_page():
     return redirect(url_for('me_page'))

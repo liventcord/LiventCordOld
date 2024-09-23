@@ -210,25 +210,31 @@ class DatabaseManager:
             print(color, message_str)
     
 
-    def do_query(self, query, args, is_multiple,row_factory):
+    def do_query(self, query, args, is_multiple, row_factory):
         try:
             conn = None
             cursor = None
             conn = self.connect()
-            if not conn or not hasattr(conn,'cursor'): 
-                db_logger.exception(f"Conn does not exists! is postgres:{self.is_post_gress}")
+            if not conn or not hasattr(conn, 'cursor'): 
+                db_logger.exception(f"Conn does not exist! is postgres: {self.is_post_gress}")
                 return
-            if row_factory:conn.row_factory = sqlite3.Row
-            cursor = conn.cursor()
-            self.print_message(Fore.BLUE,f"Query: {query} {f'Args: {args}' if args else '' }")
             
+            if row_factory:
+                conn.row_factory = sqlite3.Row
+                
+            cursor = conn.cursor()
+            self.print_message(Fore.BLUE, f"Query: {query} {f'Args: {args}' if args else ''}")
+
             if args is not None:
+                if not isinstance(args, tuple):
+                    args = (args,)
                 cursor.execute(query, args)
             else:
                 cursor.execute(query)
-            
+
             result = cursor.fetchall() if is_multiple else cursor.fetchone()
             self.close_connection(conn)
+            
             if is_multiple:
                 self.print_message(Fore.GREEN, f'Result : {result}')
             else:

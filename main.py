@@ -1,12 +1,10 @@
 from icrawler.builtin import GoogleImageCrawler
 from PIL import Image
 from io import BytesIO
-
 import shutil,os,requests,time,random,asyncio,discord
 from discord import Embed
 import sqlite3,aiosqlite,re
 from datetime import datetime
-
 from pytube import Search
 from requests.exceptions import RequestException
 from discord.ext import commands
@@ -36,48 +34,21 @@ intents = discord.Intents.all()
 bot = commands.Bot(command_prefix='#', intents=intents)
 
      
-@bot.tree.command(name="ping")
-async def ping(interaction:discord.Interaction):
-    latency = f'{round(bot.latency * 1000)}ms'
 
-    await interaction.response.send_message(f"Pong! Latency: {latency}",ephemeral=False)
-       
-
-       
-
-DATABASE_PATH = '/home/debian/liventcordenv/liventcord/databases/'
-
+BASE_PATH = os.getcwd()
+DATABASE_PATH = 'databases/'
 LANDREBORN_PATH = DATABASE_PATH + 'discord_reborn_database.db'
 
-
-ReeyukiID = 452491822871085066
-
-LANDREBORN_ID = 916548790662623282
-
-server_ids = {916548790662623282, 1208131142985715712}
+ReeyukiID = os.get_env('OWNER_ID')
+Wooperid = os.get_env('USER2_ID')
+MainServerId = os.get_env('SERVER_ID') 
+server_ids = {os.get_env('SERVER1_ID'), os.get_env('SERVER2_ID')}
 
 BULK_SAVE_THRESHOLD = 300
 
 last_message_time = {}
 last_message_content = {}
 
-
-BASE_PATH = '/home/ubuntu/liventcord'
-
-def download_avatar(user_name, avatar_url):
-    filename = os.path.join(BASE_PATH, "static", "profiles", f"{user_name}.png")
-    try:
-        response = requests.get(avatar_url)
-        if response.status_code == 200:
-            os.makedirs(os.path.dirname(filename), exist_ok=True)  # Create directories if they don't exist
-            with open(filename, "wb") as f:
-                print(filename)
-                f.write(response.content)
-        else:
-            print(f"Failed to download avatar for user {user_name}")
-    except Exception as e:
-        print(f"An error occurred while downloading avatar for user {user_name}: {e}")
-        
         
         
 emoji_ids = {
@@ -112,6 +83,28 @@ emoji_ids = {
 }
     
 
+@bot.tree.command(name="ping")
+async def ping(interaction:discord.Interaction):
+    latency = f'{round(bot.latency * 1000)}ms'
+
+    await interaction.response.send_message(f"Pong! Latency: {latency}",ephemeral=False)
+       
+
+
+def download_avatar(user_id, avatar_url):
+    filename = os.path.join(BASE_PATH, "static", "profiles", f"{user_id}.png")
+    try:
+        response = requests.get(avatar_url)
+        if response.status_code == 200:
+            os.makedirs(os.path.dirname(filename), exist_ok=True)  
+            with open(filename, "wb") as f:
+                print(filename)
+                f.write(response.content)
+        else:
+            print(f"Failed to download avatar for user {user_id}")
+    except Exception as e:
+        print(f"An error occurred while downloading avatar for user {user_id}: {e}")
+        
 async def extract_message_data(message):
     attachments = ', '.join([attachment.url for attachment in message.attachments])
     reply_to_id = None
@@ -170,7 +163,6 @@ async def get_messages(channel_id, requested_path):
     channel = bot.get_channel(int(channel_id))
 
     if channel and isinstance(channel, discord.TextChannel):
-        # Check if the client has read permissions for the channel
         if not channel.permissions_for(channel.guild.me).read_messages:
             print("Bot does not have permission to read messages in this channel.")
             return
@@ -178,22 +170,20 @@ async def get_messages(channel_id, requested_path):
         print(f"Working on channel: {channel}...")
         limit = 100
         if channel_id == "942831492059512862" or channel_id == '1005549041817493534' and limit is not None:
-            limit *= 2  # Double the limit for special channels
-        messages_to_save = []  # Accumulator for messages to be saved in bulk
+            limit *= 2  
+        messages_to_save = [] 
         try:
             requests_count = 0
-            async for message in channel.history(limit=limit):  # Apply the modified limit
+            async for message in channel.history(limit=limit): 
                 requests_count += 1
                 if requests_count % BULK_SAVE_THRESHOLD == 0:
                     print(f"Got {BULK_SAVE_THRESHOLD} messages.")
-                messages_to_save.append(message)  # Accumulate messages
+                messages_to_save.append(message) 
 
-                # Check if it's time to save messages in bulk or if we reached a certain number of messages
                 if len(messages_to_save) >= BULK_SAVE_THRESHOLD:
                     await save_messages(messages_to_save, requested_path)
-                    messages_to_save = []  # Clear accumulator
+                    messages_to_save = []  
 
-            # Save any remaining messages
             if messages_to_save:
                 await save_messages(messages_to_save, requested_path)
 
@@ -211,7 +201,7 @@ async def get_all_messages():
 
     print("Started getting all messages...")
 
-    guild = bot.get_guild(LANDREBORN_ID)
+    guild = bot.get_guild(MainServerId)
     
     if guild is None:
         print("Guild not found.")
@@ -220,7 +210,7 @@ async def get_all_messages():
     channels = guild.channels
     
     for channel in channels:
-        await get_messages(channel.id, LANDREBORN_ID)
+        await get_messages(channel.id, MainServerId)
         
 
     
@@ -229,12 +219,8 @@ async def get_all_messages():
         
 @bot.event
 async def on_ready():
-
-        
     clear_downloads_folder()
-    
     #await save_avatars(bot.guilds)
-    
     if not isSaving: return
     await get_all_messages()
     await bot.add_cog(SelfCog(bot))
@@ -245,15 +231,12 @@ async def on_ready():
 @bot.event
 async def on_message_edit(before, after):
     if not isSaving: return
-    if before.guild.id is not LANDREBORN_ID:
+    if before.guild.id is not MainServerId:
         return
 
-    # Message content has been changed
     print(f'Message with id {after.id} edited in {after.channel.name}:')
     print(f'Before: {before.content}')
     print(f'After: {after.content}')
-    
-
     
 
     async with aiosqlite.connect(LANDREBORN_PATH) as conn:
@@ -261,7 +244,6 @@ async def on_message_edit(before, after):
 
         data = []
         if after.author.bot:
-            # Check if the message contains URLs
             if any(url in after.content for url in ('http://', 'https://')):
                 data = await extract_message_data(after)
         else:
@@ -269,7 +251,6 @@ async def on_message_edit(before, after):
 
 
         c = conn.cursor()
-        # overwrite the message and update it
         await conn.execute('''INSERT OR REPLACE INTO Message 
                             (id, sender_id, content, channel, date, last_edited, attachment_urls, reply_to_id, reaction_emojis_ids) 
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)''', data)
@@ -285,8 +266,6 @@ class SelfCog(commands.Cog):
         channel = await self.bot.fetch_channel(payload.channel_id)
         message = await channel.fetch_message(payload.message_id)
 
-        #emoji = payload.emoji
-        
         attachments = ', '.join([attachment.url for attachment in message.attachments])
         reply_to_id = None
 
@@ -310,7 +289,7 @@ class SelfCog(commands.Cog):
 @bot.event
 async def on_message_delete(message):
     if not isSaving: return
-    if message.guild.id is not LANDREBORN_ID: return
+    if message.guild.id is not MainServerId: return
     print(f'Message deleted in {message.channel.name}:')
     print(f'Content: {message.content}')
     strid = str(message.id)
@@ -323,11 +302,9 @@ async def on_message_delete(message):
 @bot.event
 async def on_raw_reaction_add(payload):
     if not isSaving: return
-    # Check if the reaction is added in a guild (server)
     if payload.server_id is None or not payload.server_id in server_ids:
         return
 
-    # Fetch the message using the message ID from the payload
     channel = bot.get_channel(payload.channel_id)
     if channel is None:
         return
@@ -335,21 +312,18 @@ async def on_raw_reaction_add(payload):
     try:
         message = await channel.fetch_message(payload.message_id)
     except discord.NotFound:
-        return  # Message not found
+        return  
 
-    # Add the reaction using the message object
     emoji = bot.get_emoji(payload.emoji.id)
     if emoji is not None:
         await message.add_reaction(emoji)
 
 @bot.event
 async def on_raw_reaction_remove(payload):
-    # Check if the reaction is removed in a guild (server)
     if payload.server_id is None or not payload.server_id in server_ids:
         print(f"guild {payload.server_id} is none")
         return
 
-    # Fetch the message using the message ID from the payload
     channel = bot.get_channel(payload.channel_id)
     if channel is None:
         print(f"channel is none for {payload.channel_id}")
@@ -359,9 +333,8 @@ async def on_raw_reaction_remove(payload):
         message = await channel.fetch_message(payload.message_id)
     except discord.NotFound:
         print(f"message not found {payload.message_id}")
-        return  # Message not found
+        return  
 
-    # Get the bot's reaction emoji from the message
     for reaction in message.reactions:
         if reaction.me and reaction.emoji == payload.emoji:
             bot_emoji = reaction
@@ -369,29 +342,24 @@ async def on_raw_reaction_remove(payload):
     else:
         bot_emoji = None
 
-    # If the bot's emoji is found, remove it from the message
     if bot_emoji:
         await bot_emoji.remove(bot.user)
 
-        # Optionally, you can log a message indicating the removal
         print(f"Removed bot's reaction {payload.emoji.name} from message ID {message.id}")
 
 
 
 
 async def remove_reaction(reaction, client):
-    # Check if the reaction's owner is the bot itself
     if reaction.message.author == client.user:
         await reaction.message.remove_reaction(reaction.emoji, client.user)
         
-Wooperid = 763454684702048318
-reeyukiid = 452491822871085066
 Woopermoney = '200000000000'
 reeyukimoney = '900000000000'
 defaultmoney = '-999999999! İflas ettin!'
 
-avatar_change_cooldown = 60*5 + 5  # Cooldown duration in seconds
-last_avatar_change_time = 0  # Initialize the last avatar change time
+avatar_change_cooldown = 60*5 + 5  
+last_avatar_change_time = 0
 last_banner_change_time = 0
 
 
@@ -405,13 +373,13 @@ async def on_message(message):
     await our_server(message)
     if not message.author == bot.user:
         if isDm(message):
-            user = bot.get_user(452491822871085066)
+            user = bot.get_user(ReeyukiID)
 
             if user and message:
                 await user.send(message.content)
         
         isLiventMode = False
-        if isLiventMode and message.author.id == 452491822871085066:
+        if isLiventMode and message.author.id == ReeyukiID:
             contentcached = message.content
             channelcached = message.channel
             await message.delete()
@@ -441,9 +409,7 @@ async def on_message(message):
                 user_name = user.name
                 user_id = user.id
                 user_created_at = user.created_at.strftime("%Y-%m-%d")
-                #user_badges = "bravery"  # Example badge
                 user_is_bot = "🟢" if user.bot else "🔴"
-                #user_dm_status = "🟢"  # Example DM status
                 user_status = "🟢" if str(user.status) == "online" else "🔴"
 
                 member = message.guild.get_member(user.id)
@@ -499,49 +465,38 @@ async def on_message(message):
                 try:
                     data = response.json()
                     await message.channel.send(data['cevap'])  
-                except ValueError:  # Handle JSON decoding error
+                except ValueError:  
                     await message.channel.send("Error: Invalid JSON format in the API response.")
             else:
                 await message.channel.send(f"Failed to get response from the API {response.status_code}")
-            # Check if the message starts with the command and the user has attached an image
         elif message.content.startswith('#ping'):
             latency = f'{round(bot.latency * 1000)}ms'
             await message.reply(f"Pong! Latency: {latency}")
         elif message.content.lower().startswith('#changeavatar') and message.attachments:
-            # Get the current time
             current_time = time.time()
 
-            # Check if the cooldown period has passed since the last avatar change
             if current_time - last_avatar_change_time >= avatar_change_cooldown:
-                # Get the first attachment or URL from the message
                 attachment_url = message.attachments[0].url if message.attachments else message.content.split()[1]
 
-                # Check if the URL lacks the "http://" prefix
                 if attachment_url.startswith('http'):
                     url_with_http = attachment_url
                 else:
                     url_with_http = f'http://{attachment_url}'
 
-                # Download the image from the URL
                 response = requests.get(url_with_http)
                 if response.status_code == 200:
-                    # Save the image as avatar.png
                     with open('avatar.png', 'wb') as file:
                         file.write(response.content)
-                    # Change the bot's avatar
                     with open('avatar.png', 'rb') as avatar_file:
                         await bot.user.edit(avatar=avatar_file.read())
                     await message.channel.send("Avatar changed successfully!")
-                    # Update the last avatar change time
                     last_avatar_change_time = current_time
                 else:
                     await message.channel.send("Failed to download the image.")
             else:
-                # Calculate the remaining time until cooldown ends
                 remaining_time = int(avatar_change_cooldown - (current_time - last_avatar_change_time))
                 await message.channel.send(f"Avatar change cooldown is active. Please wait {remaining_time} seconds.")
         elif message.content.lower().startswith('#status'):
-            # Split the message content to get the nickname
             split_content = message.content.split()
             if len(split_content) >= 2:
                 nickname = ' '.join(split_content[1:])  # Join the nickname parts
@@ -553,7 +508,7 @@ async def on_message(message):
             def get_money(author_id):
                 if author_id == Wooperid:
                     return Woopermoney
-                elif author_id == reeyukiid:
+                elif author_id == ReeyukiID:
                     return reeyukimoney
                 else:
                     return defaultmoney
@@ -603,34 +558,27 @@ async def on_message(message):
                 try:
                     message_id = int(content_parts[1])
 
-                    # Search for the message across all channels in the server
                     target_message = await find_message_in_channels(message.guild, message_id)
 
                     if target_message:
-                        # Check if the found message has embeds
                         if target_message.embeds:
                             for embed in target_message.embeds:
                                 if embed.thumbnail:
-                                    # Get the thumbnail URL from the embed
                                     thumbnail_url = embed.thumbnail.url
                                     await send_image_from_url(message.channel, thumbnail_url)
 
                                 if embed.footer and embed.footer.icon_url:
-                                    # Get the footer icon URL from the embed
                                     footer_icon_url = embed.footer.icon_url
                                     await send_image_from_url(message.channel, footer_icon_url)
 
                                 if embed.image:
-                                    # Get the image URL from the embed
                                     image_url = embed.image.url
                                     await send_image_from_url(message.channel, image_url)
 
                                 if embed.url:
-                                    # Get the URL from the embed
                                     embed_url = embed.url
                                     await message.channel.send(f'Embed URL: {embed_url}')
                                 if embed.author and embed.author.icon_url:
-                                    # Get the author icon URL from the embed
                                     author_icon_url = embed.author.icon_url
                                     await send_image_from_url(message.channel, author_icon_url)
                         else:
@@ -665,17 +613,12 @@ async def updateselfstatus(nickname):
 
 
 async def send_image_from_url(channel, url):
-    # Download the image using requests
     response = requests.get(url)
     if response.status_code == 200:
-        # Open the image with Pillow
         image = Image.open(BytesIO(response.content))
-        # Save the enhanced image to a BytesIO object
         image_bytes = BytesIO()
         image.save(image_bytes, format='JPEG')
         image_bytes.seek(0)
-
-        # Send the enhanced image in Discord
         await channel.send(file=discord.File(image_bytes, filename='image.jpg'))
     else:
         await channel.send('Failed to download the image.')
@@ -693,7 +636,7 @@ async def save_avatars(guilds):
                     print(f"Saving user {name}'s avatar: {member.avatar.url}")
                     
                     avatar_url = str(member.avatar.url)
-                    download_avatar(name,avatar_url)
+                    download_avatar(member.user_id,avatar_url)
                 
 
             print("done a guild")
@@ -718,7 +661,7 @@ def construct_server_path(server_id):
     return DATABASE_PATH + f"Server_{server_id}_database.db"
 
 async def forward_message(message):
-    if message.guild.id != LANDREBORN_ID :      return
+    if message.guild.id != MainServerId :      return
     URL = 'http://localhost:5005/messagediscordbot'
     
 
@@ -757,18 +700,15 @@ async def forward_message(message):
             await save_messages(message, requested_path) 
 
 async def delete_messages(message):
-# Extract the amount from the message content
     amount = int(message.content.split()[1])
-    # Check if the user has provided a valid number of messages to delete
     if amount <= 0 or amount > 100:
         await message.channel.send('You can only delete between 1 and 100 messages at a time.')
         return
-    # Delete the specified number of messages
     try:
-        deleted = await message.channel.purge(limit=amount + 1)  # +1 to include the command message
-        count_deleted = len(deleted) - 1  # Excluding the command message itself
+        deleted = await message.channel.purge(limit=amount + 1)  
+        count_deleted = len(deleted) - 1  
         delete_msg = await message.channel.send(f'Deleted {count_deleted} messages.')
-        await delete_msg.delete(delay=10)  # Delete the deletion confirmation message after 10 seconds
+        await delete_msg.delete(delay=10)
     except Exception as e:
         print(e)
         await message.channel.send('There was an error while trying to delete messages.')
@@ -779,18 +719,16 @@ async def me_mimic(message):
     try:
         # Check if the command format is #me #<WebhookAvatarUrl> #<WebhookNick> <TextToSendByWebhook>
         if parts[1].startswith("#") and parts[2].startswith("#"):
-            avatar_url = parts[1][1:]  # Remove the leading "#"
+            avatar_url = parts[1][1:]  
             nickname = parts[2][1:]
             content = ' '.join(parts[3:])
             
-            # Check if the URL is a Tenor URL
             if "media1.tenor.com/m/" in avatar_url or "c.tenor.com/" in avatar_url:
                 tenor_url = avatar_url
             elif avatar_url.startswith("tenor.com") or avatar_url.startswith("https://tenor.com"):
-                # Check if the URL ends with an image extension, if not, append ".gif"
                 tenor_url = avatar_url if avatar_url.endswith((".gif", ".jpg", ".jpeg", ".png")) else avatar_url + ".gif"
             else:
-                tenor_url = avatar_url  # Use the original URL if not a Tenor URL
+                tenor_url = avatar_url 
                 
             await message.delete()
             webhook = await message.channel.create_webhook(name=nickname)
@@ -817,7 +755,6 @@ async def me_mimic(message):
                 await webhook.delete()
 
     except (IndexError, ValueError):
-        # Handle any index error or value error, e.g., if parts[1] is not found or if the ID conversion fails
         pass
 
 async def youtube_search(message, command):
@@ -842,7 +779,7 @@ async def our_server(message):
                 return True
             else:
                 return False
-        else: # Non guild channel
+        else:
             return True
         
     if canReact(message):
@@ -852,8 +789,6 @@ async def our_server(message):
             m_emoji_ids = re.findall(r'<(a?):[a-zA-Z0-9_]+:([0-9]+)>', message.content)
             m_emoji_ids = [emoji[1] for emoji in m_emoji_ids]
             messagelower = message.content.lower()
-            
-            
             
             #if message and message.reference and message.reference.resolved:
             #    now_utc = datetime.now(timezone.utc)
@@ -904,15 +839,13 @@ async def our_server(message):
                 await message.add_reaction(bot.get_emoji(emoji_ids['yes']))
                
             keywords = ['wait', 'matthew', 'matte']
-            words = messagelower.split()  # Split the message into a list of words
+            words = messagelower.split() 
             for word in words:
                 if word in keywords:
                     await message.add_reaction(bot.get_emoji(emoji_ids['sikeleton']))
-                    break  # Add break statement to stop after the first match
+                    break  
 
             if message.author.id == emoji_ids['mudae_user']:
-                #if "you just won" in messagelower or "you won" in messagelower or "you got" in messagelower:
-                #    await message.reply("Trash")
                 if 'uncommon nothing' in messagelower:
                     await message.add_reaction(bot.get_emoji(emoji_ids['fall']))
                     await message.add_reaction(bot.get_emoji(emoji_ids['neverforgive']))
@@ -925,11 +858,11 @@ async def our_server(message):
                 await message.add_reaction(bot.get_emoji(emoji_ids['neverforgive']))
                 
             turko_words = ['dolar', 'fiyat', 'ekonomi', 'tl']
-            words = messagelower.split()  # Split the message into a list of words
+            words = messagelower.split()  
             for word in words:
                 if word in turko_words:
                     await message.add_reaction(bot.get_emoji(emoji_ids['turko']))
-                    break  # Add break statement to stop after the first match
+                    break
                 
                 
             if hasemoji('hekanka'):
@@ -976,10 +909,10 @@ def extract_command_parts(message, command):
     return list(filter(lambda x: x.strip(), message.content[len(command):].split('#')))
 
 async def warn(message):
-    parts = message.content.split(maxsplit=1)  # İlk boşlukta ayır, sadece bir kez ayır
-    reason = ' '.join(parts[1].split()[1:]) if len(parts) > 1 else ""  # Komutu ve kullanıcı etiketini atladıktan sonra kalan kısım neden olacak
+    parts = message.content.split(maxsplit=1) 
+    reason = ' '.join(parts[1].split()[1:]) if len(parts) > 1 else ""
     
-    user_mention = message.mentions[0].mention if message.mentions else ""  # Kullanıcının etiketini al
+    user_mention = message.mentions[0].mention if message.mentions else "" 
     await message.delete()
     
     await message.channel.send(f'''{user_mention}, be well-behaved or you will get banned!
@@ -998,7 +931,7 @@ async def regionalconvert(message,isStripping):
     for i, char in enumerate(text):
         if char.isalpha():
             char_with_regional.append(f":regional_indicator_{char.lower()}:")
-            # Kontrol edilen karakterden önceki ve sonraki karakterler boşluksa, boşluk ekleyin
+
             if i < len(text) - 1 and text[i+1].isspace():
                 char_with_regional.append("   ")
         elif char.isspace():
@@ -1007,7 +940,6 @@ async def regionalconvert(message,isStripping):
 
     result = "".join(char_with_regional)
 
-    # Truncate the result if it exceeds Discord's maximum character limit
     if len(result) > 2000:
         result = result[:1997] + "..."
     
@@ -1016,13 +948,14 @@ async def regionalconvert(message,isStripping):
             await message.channel.send(result)
         else:
             return result
-    
+def calculate_win_rate():
+    return random.randint(0, 100)
+
 async def rate(message):
     user_mention = message.mentions[0] if message.mentions else None
     user = user_mention or message.author
 
-    # Placeholder for the actual win rate calculation logic
-    gay_rate = calculate_win_rate()  # You need to implement this function
+    gay_rate = calculate_win_rate() 
 
     output_message = f"**Gay Rate\n{user.name} is {gay_rate}% Gay :rainbow_flag:\nRequested by {message.author.name}**"
 
@@ -1062,8 +995,6 @@ async def horse_contest(message):
     remove_folder(os.path.join(DOWNLOADPATH, folder_name))
 
 
-def calculate_win_rate():
-    return random.randint(0, 100)
 
 
 
@@ -1100,7 +1031,6 @@ async def process_image_search_command(message, command):
 
             thumbnails = await search_images(search_term, folder_name, number)
 
-            # Batch images into groups of 10 for attachment limit
             batches = [thumbnails[i:i + 10] for i in range(0, len(thumbnails), 10)]
             for batch in batches:
                 await send_images_in_batch(message.channel, batch)
@@ -1148,28 +1078,5 @@ def clear_downloads_folder():
 
 bot.run(os.getenv('DISCORD_TOKEN'))
 
-#channels = [
-#    "1013013271969804349", # mod
-#    "916548826024796190"   # main
-#    "942831492059512862"   # general
-#    "991804736103780423"   # memes
-#    "1169660616219295935"  # announcement
-#    "1005553530486128700"  # welcome
-#    "1018944264031457353"  # rules
-#    "983786551924387880",  # questions
-#    "918780185908764692",  # faq
-#    "983800541245222933",  # suggestions
-#    "942831026613395578",  # recommendations
-#    "954450218286477392",  # discussion
-#    "954450052561133568",  # music
-#    "954450138288492614",  # art
-#    "954450153987801120",  # videos
-#    "989269628599537765",  # gamedev
-#    "954450163638886440",  # yobaz
-#    "999917560067797062",  # code
-#    "954450174246273114",  # shitpost
-#    "983800445334085703",  # textforvoice
-#    "1001440945880965120"  # spam
-#]
 
 

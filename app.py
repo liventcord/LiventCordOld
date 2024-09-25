@@ -854,7 +854,11 @@ def join_voice_channel(data):
     users_in_voice[guild_id][channel_id].append(user_id)
     redis_manager.set_to_redis_list('voice_users', users_in_voice)
     
-    response = users_in_voice[guild_id][channel_id]
+    response = {
+        'guild_id' : guild_id,
+        'channel_id' : channel_id,
+        'users_list' : users_in_voice[guild_id][channel_id]
+    }
     emit('voice_users_response', response, broadcast=False)
     emit_manager.emit_to_guild(guild_id,'voice_user_joined',user_id)
 

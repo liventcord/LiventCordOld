@@ -1457,7 +1457,7 @@ function setMicrophone() {
     console.log("Set microphone! to " , isMicrophoneOpen);
 }
 
-let isEarphonesMuted = true;
+let isEarphonesOpen = true;
 function setEarphones() {
     let imagePath = isEarphonesOpen ? `/static/images/icons/whiteearphones.png` : `/static/images/icons/redearphones.png`;
     earphoneButton.src = imagePath;
@@ -2291,7 +2291,17 @@ function changeCurrentDm(friend_id) {
 
     isChangingPage = false;
 }
-
+function playAudio(audio_string) {
+    try {
+        const audio = new Audio(audio_string);
+        if(audio) {
+            audio.play();
+        }
+    }
+    catch(error) {
+        console.log(error);
+    }
+}
 function changecurrentGuild() {
     isChangingPage = true;
     isOnMe = false;
@@ -2306,12 +2316,16 @@ function changecurrentGuild() {
   
     isChangingPage = false;
 }
-function joinVoiceChannel(channel_id) {
-    if(currentVoiceChannelId == channel_id) { return; }
+socket.on('voice_users_response',function(data) {
+    const channel_id = data.channel_id;
+    playAudio('/static/sounds/joinvoice.mp3');
     clearVoiceChannel(currentVoiceChannelId);
     const sp = getId('sound-panel');
     sp.style.display = 'flex';
     currentVoiceChannelId = channel_id;
+    if(isOnGuild) {
+        currentVoiceChannelGuild = data.guild_id;
+    }
     const soundInfoIcon = getId('sound-info-icon');
     soundInfoIcon.innerText = `${currentChannelName} / ${currentGuildName}`;
     if (!usersInVoice[channel_id]) {
@@ -2323,18 +2337,40 @@ function joinVoiceChannel(channel_id) {
     if(!usersInVoice[channel_id].includes(currentUserId)) {
         usersInVoice[channel_id].push(currentUserId);
     }
+    usersInVoice[channel_id] = data.users_list;
+});
+function joinVoiceChannel(channel_id) {
+    if(currentVoiceChannelId == channel_id) { return; }
+
+    const data = { 
+        'guild_id' : currentGuildId, 'channel_id' : channel_id
+    }
+
+    socket.emit('join_voice_channel',data);
+
+    return;
+    
 }
 
 function closeCurrentCall() {
+    playAudio('/static/sounds/leavevoice.mp3');
+
     const sp = getId('sound-panel');
     const oldVoiceId = currentVoiceChannelId;
     sp.style.display = 'none';
     clearVoiceChannel(oldVoiceId);
     currentVoiceChannelId = '';
+    currentVoiceChannelGuild = '';
     const buttonContainer = channelsUl.querySelector(`li[id="${oldVoiceId}"]`);
 
     mouseLeaveChannelButton(buttonContainer, false,oldVoiceId);
     usersInVoice[oldVoiceId] = [];
+
+    const data = {
+        'guild_id' : currentVoiceChannelGuild,
+        'channel_id' : currentVoiceChannelId
+    }
+    socket.emit('leave_voice_channel',data)
 }
 function clearVoiceChannel(channel_id) {
     const channelButton = channelsUl.querySelector(`li[id="${channel_id}"]`);

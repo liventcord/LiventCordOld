@@ -1534,3 +1534,25 @@ textarea::-webkit-scrollbar-track {
 .failed {
     color: rgba(255, 0, 0, 0.89);
 }
+
+
+
+
+
+
+
+
+
+
+
+.modal {
+    display: flex; /* Center the content */
+    justify-content: center;
+    align-items: center;
+    position: fixed; /* Stay in place */
+    z-index: 10; /* Sit on top */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+}

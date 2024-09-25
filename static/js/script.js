@@ -1252,8 +1252,44 @@ function assignElements() {
 }
 
 
+function initializeMusic() {
+    const modal = createEl('div',{className : 'modal'});
+    document.body.appendChild(modal);
+    
+    const songs = [
+        '/static/sounds/musics/2.mp3',
+        '/static/sounds/musics/1.mp3',
+        '/static/sounds/musics/3.mp3',
+        '/static/sounds/musics/4.mp3'
+    ];
 
+    let currentSongIndex = 0;
+    const audio = new Audio(songs[currentSongIndex]); 
+
+    function playCurrentSong() {
+        audio.src = songs[currentSongIndex];
+        audio.play(); 
+    
+        audio.onended = function () {
+            currentSongIndex++;
+            if (currentSongIndex >= songs.length) {
+                currentSongIndex = 0;
+            }
+    
+            playCurrentSong();
+        };
+    }
+
+    modal.addEventListener('click', function () {
+
+        playCurrentSong();
+
+        modal.style.display = 'none';
+    });
+}
 document.addEventListener('DOMContentLoaded', function () {
+    //initializeMusic();
+    
     assignElements();
     
     getId('globalSearchInput').addEventListener('click', function(){
@@ -1369,7 +1405,7 @@ function drawVoiceChannelUser(index,user_id,channel_id,channelButton,allUsersCon
     createUserContext(user_id);
     
     userContainer.id = `user-${user_id}`;
-    const userElement = createEl('img', { src: profileUrl, style: 'width: 25px; height: 25px; border-radius: 50px; position:fixed; margin-right: 170px;' });
+    const userElement = createEl('img', { style: 'width: 25px; height: 25px; border-radius: 50px; position:fixed; margin-right: 170px;' });
     setProfilePic(userElement,user_id);
     userContainer.appendChild(userElement);
     userContainer.style.marginTop = index == 0 ? '30px' : '10px';

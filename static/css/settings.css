@@ -1268,14 +1268,24 @@ th {
 .sound-panel-button {
     border-radius: 5px;
     border: none;
+    cursor: pointer;
     background-color: #313338;
     width: 50px;
     height: 30px;
     margin: 5px;
-
     margin-top: 53px;
-
+    transition: background-color 0.3s; /* Optional for smooth transition */
 }
+
+.sound-panel-button:hover {
+    background-color: #444; /* Change this to your desired hover color */
+}
+
+.sound-panel-button svg {
+    pointer-events: none; /* Ensures the SVG doesn't block hover events */
+}
+
+
 #sound-panel {
     display: none;
     justify-content: center;
@@ -1288,6 +1298,7 @@ th {
     left: 72px;
     width: 240px;
 }
+
 #camera-sound-panel {
     color: white;
     font-size: 17px;

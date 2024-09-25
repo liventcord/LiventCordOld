@@ -756,7 +756,7 @@ def upload_profile_pic():
     try:
         print(is_guild)
         if is_guild:
-            guild_id = request.form.get('guild_id')
+            
             if not guild_manager.can_user_upload_guild_image(guild_id,user_id):  return jsonify({'error': 'Access denied'}), 403
             postgres_manager.upload_guild_file(guild_id,photo,'png',guild_id)
             guild_manager.update_guild_image_boolean(guild_id,True)

@@ -754,6 +754,8 @@ function drawProfilePop(userData) {
     profileOptions.appendChild(profileOptionsText);
     popTopContainer.appendChild(profileOptions);
     const profileImg = createEl('img',{id:'profile-display', });
+    profileImg.addEventListener("mouseover", function() { this.style.borderRadius = '0px'; });
+    profileImg.addEventListener("mouseout", function() { this.style.borderRadius = '50%'; });
 
     const profileOptionsContainer = createEl('div',{className: 'profile-options-container'});
 

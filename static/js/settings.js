@@ -1586,22 +1586,25 @@ function createCropPop(inputSrc, callbackAfterAccept) {
     const imageContainer = createEl('div', { id: 'image-container' });
     const appendButton = createEl('button', { className: 'pop-up-append', textContent: 'Uygula' });
     let parentContainer;
+    
     appendButton.addEventListener('click', () => {
+        // Get the cropped result as a square image (the output size can be adjusted as needed)
         croppie.result({
             type: 'base64',
             format: 'jpeg',
-            viewport:'original',
-            quality:1,
-            circle : true
+            quality: 1,
+            size: { width: 430, height: 430 }, // Set size to square (adjust if necessary)
+            circle: false // Ensure the output is not circular
         }).then(function (base64) {
             callbackAfterAccept(base64);
             parentContainer.remove();
             updateSettingsProfileColor();
         });
     });
+    
     const backButton = createEl('button', { textContent: 'İptal', className: 'create-guild-back common-button' });
 
-    backButton.addEventListener('click',() => { parentContainer.remove(); })
+    backButton.addEventListener('click', () => { parentContainer.remove(); });
 
     const popBottomContainer = createEl('div', { className: 'popup-bottom-container', id: 'invite-popup-bottom-container' });
     popBottomContainer.style.bottom = '-5%';
@@ -1618,7 +1621,6 @@ function createCropPop(inputSrc, callbackAfterAccept) {
         closeBtnId: 'invite-close-button'
     });
     
-
     const imageElement = createEl('img');
     imageElement.src = inputSrc;
 
@@ -1628,16 +1630,17 @@ function createCropPop(inputSrc, callbackAfterAccept) {
         showZoomer: true,
         enableExif: true
     });
-    console.log(croppie)
+
     croppie.bind({
         url: inputSrc
     });
+    
     getId('cropPopContainer').style.setProperty('height', '600px', 'important');
     getId('cropPopContainer').style.setProperty('width', '600px', 'important');
 
-    imageContainer.querySelector('.cr-slider-wrap').querySelector('.cr-slider').style.transform = 'scale(1.5);'
-    imageContainer.querySelector('.cr-slider-wrap').querySelector('.cr-slider').style.transform = 'scale(1.5);'
+    imageContainer.querySelector('.cr-slider-wrap').querySelector('.cr-slider').style.transform = 'scale(1.5);';
 }
+
 function removeguildImage() {
     socket.emit('remove_guild_image',{'guild_id': currentGuildId})
     getId('guildImage').value = '';

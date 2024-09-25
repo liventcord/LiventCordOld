@@ -10,7 +10,7 @@ from requests.exceptions import RequestException
 from discord.ext import commands
 
 
-BOT_SELF_ID = 1172483863331737611
+BOT_SELF_ID = os.getenv('SELF_ID')
 MAX_IMAGES_COUNT = 50
 isSaving = False
 SEARCH_COMMAND1 = '#google'
@@ -39,10 +39,10 @@ BASE_PATH = os.getcwd()
 DATABASE_PATH = 'databases/'
 LANDREBORN_PATH = DATABASE_PATH + 'discord_reborn_database.db'
 
-ReeyukiID = os.get_env('OWNER_ID')
-Wooperid = os.get_env('USER2_ID')
-MainServerId = os.get_env('SERVER_ID') 
-server_ids = {os.get_env('SERVER1_ID'), os.get_env('SERVER2_ID')}
+ReeyukiID = os.getenv('OWNER_ID')
+Wooperid = os.getenv('USER2_ID')
+MainServerId = os.getenv('SERVER_ID') 
+server_ids = {os.getenv('SERVER1_ID'), os.getenv('SERVER2_ID')}
 
 BULK_SAVE_THRESHOLD = 300
 

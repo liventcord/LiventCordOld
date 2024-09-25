@@ -187,11 +187,12 @@ class FriendsManager(DatabaseManager):
             AND u.user_id != ?
             AND f.friend_id IN ({})
         '''.format(','.join('?' for _ in friend_ids))
-        
+
         params = [user_id, user_id, user_id] + friend_ids
-        
-        results = self.fetch_multiple(query, params)
+
+        results = self.fetch_multiple(query, (params))
         return results
+
 
 
 

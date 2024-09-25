@@ -5,7 +5,7 @@ from uuid import uuid4
 from datetime import datetime,timedelta
 from db_classes.emit_manager import EmitManager
 from db_classes.db_handler import friends_manager,guild_manager,users_manager,email_manager,files_manager,direct_messages_manager,GuildMessagesManager,redis_manager
-from utils.utils import create_random_id,is_using_pg,logger
+from utils.utils import create_random_id,is_using_pg,logger,Message,datetime_to_string
 from pytz import utc as UTC
 from werkzeug.utils import secure_filename
 from sqlite3 import IntegrityError
@@ -342,7 +342,7 @@ def delete_guild(guild_id):
     user_id = get_user_id()
     if not user_id:  return abort(403)
     if not guild_id:  return
-    if not guild_manager.is_guild_exists(guild_id) : return
+    if not guild_manager.does_guild_exists(guild_id) : return
     if not guild_manager.can_user_delete_guild(user_id, guild_id): 
         socketio.emit('deleted_guild',{'success' : False})
         return
@@ -576,15 +576,24 @@ def get_bulk_reply(data):
     user_id = get_user_id()
     if not user_id: 
         return jsonify({'error': 'Unauthorized'}), 401
+
     requested_ids = data.get('ids')
     guild_id = str(data.get('guild_id'))
     channel_id = str(data.get('channel_id'))
-    if not channel_id or not guild_id or not requested_ids: return jsonify({'error': 'Invalid Request'}), 400
+
+    if not channel_id or not guild_id or not requested_ids:
+        return jsonify({'error': 'Invalid Request'}), 400
+    
     if not guild_manager.check_users_guild(guild_id, user_id):
         return jsonify({'error': 'Access denied'}), 403
+    
     messages_manager = get_guild_messages_manager(guild_id)
-    bulk_replies = messages_manager.db_get_bulk_reply(requested_ids,channel_id)
-    emit('bulk_reply_response',{'bulk_replies' : bulk_replies})
+    bulk_replies = messages_manager.db_get_bulk_reply(requested_ids, channel_id)
+
+    # Convert datetime objects in bulk_replies to strings
+    bulk_replies = datetime_to_string(bulk_replies)
+
+    emit('bulk_reply_response', {'bulk_replies': bulk_replies})
 
 @socketio.on('get_message_date')
 @limit(30)
@@ -730,7 +739,7 @@ def upload_profile_pic():
     user_id = get_user_id()
     if not user_id: return jsonify({'error': 'Unauthorized'}), 401
 
-    is_guild = bool(request.form.get('is_guild'))
+    is_guild = bool(request.form.get('guild_id'))
     if 'photo' not in request.files: return jsonify({'error': 'Invalid Request'}), 400
     if not 'content-length' in request.headers : return jsonify({'error': 'Invalid Request'}), 400
 
@@ -745,6 +754,7 @@ def upload_profile_pic():
     photo = file.read()
 
     try:
+        print(is_guild)
         if is_guild:
             guild_id = request.form.get('guild_id')
             if not guild_manager.can_user_upload_guild_image(guild_id,user_id):  return jsonify({'error': 'Access denied'}), 403
@@ -763,6 +773,7 @@ def upload_profile_pic():
     except Exception as e:
         logger.exception(e)
         return jsonify({'error': 'Upload failed'}), 400
+        
 
 
 
@@ -967,7 +978,7 @@ def join_to_guild(invite_id):
     creator_id = details_dict['creator_id']
     guild_id = details_dict['guild_id']
   
-    if not guild_manager.is_guild_exists(guild_id): return abort(403)
+    if not guild_manager.does_guild_exists(guild_id): return abort(403)
 
     creator_name = users_manager.db_get_user_name(creator_id)
     guild_name = get_guild_name(guild_id)
@@ -1037,7 +1048,7 @@ def get_user_list(guild_id):
 def send_user_metadata(guild_id):
     user_id = get_user_id()
     if not guild_id or not user_id: return
-    if not guild_manager.is_guild_exists(guild_id) : return
+    if not guild_manager.does_guild_exists(guild_id) : return
     user_metadata = guild_manager.get_users_metadata(guild_id,users_manager)
     
     socketio.emit('update_users_metadata', {'users': user_metadata, 'guild_id' : guild_id})
@@ -1157,30 +1168,41 @@ def add_user_dm(data):
 @socketio.on('get_history')
 def get_history(data):
     user_id = get_user_id()
-    if not user_id:  return 
+    if not user_id:
+        return 
 
     channel_id = str(data.get('channel_id'))
     guild_id = str(data.get('guild_id'))
     is_dm = bool(data.get('is_dm'))
-    if not channel_id: return 
-    if not is_dm:
-        if not guild_id: return
-        if not guild_manager.check_users_guild(guild_id,user_id): return 
     
+    if not channel_id:
+        return 
+    if not is_dm:
+        if not guild_id:
+            return
+        if not guild_manager.check_users_guild(guild_id, user_id):
+            return 
 
     if is_dm:
-        history = direct_messages_manager.get_messages_between_users(user_id ,channel_id)
-        oldest_message_date = direct_messages_manager.db_get_oldest_message_date(user_id,channel_id)
+        history = direct_messages_manager.get_messages_between_users(user_id, channel_id)
+        oldest_message_date = direct_messages_manager.db_get_oldest_message_date(user_id, channel_id)
     else:
         messages_manager = get_guild_messages_manager(guild_id)
-        history = messages_manager.db_get_history_from_channel(channel_id)
+        raw_history = messages_manager.db_get_history_from_channel(channel_id)  # Get raw data
+        history = [Message(data) for data in raw_history]  # Convert dictionaries to Message instances
         oldest_message_date = messages_manager.db_get_oldest_message_date(channel_id)
-        
-    emit('history_data_response', {'history' : history,'guild_id' : guild_id, 'channel_id' : channel_id,'oldest_message_date' : oldest_message_date} ,broadcast=False)
 
+    # Convert datetime objects to ISO strings
+    history = [msg.to_dict() for msg in history]
+    oldest_message_date = oldest_message_date.isoformat() if isinstance(oldest_message_date, datetime) else oldest_message_date
 
+    emit('history_data_response', {
+        'history': history,
+        'guild_id': guild_id,
+        'channel_id': channel_id,
+        'oldest_message_date': oldest_message_date
+    }, broadcast=False)
 
-            
 @socketio.on('get_old_messages')
 @limit(30)
 def get_old_messages(data):
@@ -1191,25 +1213,37 @@ def get_old_messages(data):
         guild_id = str(data.get('guild_id'))
     channel_id = str(data.get('channel_id'))
     date_str = str(data.get('date'))
-    message_id = data.get('message_id',None)
-    
+    message_id = data.get('message_id', None)
+
     if is_dm:
-        if not friends_manager.is_friend_request_existing(user_id, channel_id): return
+        if not friends_manager.is_friend_request_existing(user_id, channel_id):
+            return
     else:
-        if not guild_id: return
-        if not guild_manager.check_users_guild(guild_id,user_id): return 
+        if not guild_id:
+            return
+        if not guild_manager.check_users_guild(guild_id, user_id):
+            return 
         
     if is_dm:
-        history = direct_messages_manager.db_get_old_messages_between_users(user_id ,channel_id,date_str,message_id)
-        oldest_message_date = direct_messages_manager.db_get_oldest_message_date(user_id,channel_id)
+        raw_history = direct_messages_manager.db_get_old_messages_between_users(user_id, channel_id, date_str, message_id)
+        oldest_message_date = direct_messages_manager.db_get_oldest_message_date(user_id, channel_id)
     else:
         messages_manager = get_guild_messages_manager(guild_id)
-        history = messages_manager.db_get_old_messages(channel_id, date_str,message_id)
+        raw_history = messages_manager.db_get_old_messages(channel_id, date_str, message_id)
         oldest_message_date = messages_manager.db_get_oldest_message_date(channel_id)
-        
 
-    emit('old_messages_response' , {'history' : history, 'oldest_message_date' : oldest_message_date,'message_id' : message_id}, broadcast=False)
+    # Convert dictionaries to Message instances
+    history = [Message(data) for data in raw_history]  # Convert raw data to Message instances
 
+    # Convert datetime objects to ISO strings
+    history = [msg.to_dict() for msg in history]  # Now we can safely call to_dict()
+    oldest_message_date = oldest_message_date.isoformat() if isinstance(oldest_message_date, datetime) else oldest_message_date
+
+    emit('old_messages_response', {
+        'history': history,
+        'oldest_message_date': oldest_message_date,
+        'message_id': message_id
+    }, broadcast=False)
 
 
 def save_attachment_file(file, file_id, guild_id,channel_id,extension):

@@ -39,7 +39,7 @@ class GuildManager(DatabaseManager):
         if self.is_user_author(guild_id, user_id): return True
         return self.check_user_permission(guild_id,user_id,Permission.can_invite)
     
-    def can_user_upload_guild_img(self,guild_id,user_id):
+    def can_user_upload_guild_image(self,guild_id,user_id):
         if self.is_user_author(guild_id, user_id): return True
         return self.check_user_permission(guild_id,user_id,Permission.is_admin)
     

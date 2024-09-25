@@ -1,0 +1,7 @@
+icrawler
+pillow
+requests
+asyncio
+discord
+aiosqlite
+pytube

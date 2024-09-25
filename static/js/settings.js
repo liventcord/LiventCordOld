@@ -654,6 +654,9 @@ document.addEventListener('DOMContentLoaded', async function () {
         addUser(passed_friend_id,passed_friend_name,passed_friend_discriminator,passed_friend_blocked)
     }
     addContextListeners();
+    const val = loadBooleanCookie('isParty');
+    isParty = val;
+    
     getId("variableScript").remove();
 
 
@@ -1197,6 +1200,7 @@ function selectSettingCategory(settingtype) {
                 });
             }
             break;
+
         // server settings 
         case Overview:
             newHTML = getOverviewHtml();
@@ -1643,6 +1647,7 @@ function removeguildImage() {
 }
 let lastConfirmedguildImg;
 function onEditImage(isGuild) {
+    if(!isCropieInitialized) { return }
     const filedata = getId(isGuild ? 'guildImage':'profileImage').files[0];
     if (!filedata) {
         console.log("No file. ", isGuild)
@@ -1731,7 +1736,6 @@ function uploadImage(isGuild) {
         
         if (blob.size <= 8 * 1024 * 1024) {
             formData.append('photo', blob, 'profile-image.png');
-            formData.append('is_guild', isGuild);
             
             if (isGuild) {
                 formData.append('guild_id', uploadedGuildId);
@@ -1747,6 +1751,13 @@ function uploadImage(isGuild) {
                     console.error('Error uploading profile pic!');
                 }
             };
+            xhr.onerror = function() {
+                if(isGuild) {
+                    getId('guild-image').src = lastConfirmedguildImg 
+                } else {
+                    getId('settings-self-profile').src = lastConfirmedProfileImg;
+                }
+            }
             xhr.send(formData);
         } else {
             alertUser('Dosya boyutu 8 MB\'den büyük olamaz!');
@@ -1858,7 +1869,7 @@ const getCursorXY = (input, selectionPoint) => {
     range.setStart(textNode, selectionPoint);
     range.setEnd(textNode, selectionPoint);
     const rect = range.getBoundingClientRect();
-    const x = rect.left - inputX + scrollLeft;
+    const x = rect.left - inputX + scrollLeft + 5;
     const y = rect.top - inputY + scrollTop;
     document.body.removeChild(div);
 

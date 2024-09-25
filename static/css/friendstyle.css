@@ -94,9 +94,7 @@
     scroll-behavior: smooth;
     overflow-x:hidden;
     font-weight: bold;
-    padding-left: 125px; padding-top: 45px; 
     background-color: #2b2d31;     color: #ffffff;
-    max-height: calc(100vh - 100px); 
     position: relative;
 }
 

@@ -141,8 +141,7 @@
 #channel-list {
     width: 140px;
     padding-left: 125px;
-    padding-top: 45px;
-    max-height: calc(100vh - 100px);
+    max-height: 100%;
     position: relative;
 }
 .channelSpan {
@@ -367,7 +366,7 @@
 .arrow-symbol {
     text-align: center;
     font-size: 20px;
-    margin-top: 7px; 
+    margin-top: 12px; 
     margin-left: 10px;
     transform: scaleY(2);
 }
@@ -448,18 +447,76 @@
 }
 
 #toolbaroptions {
-    z-index: 3;
+    z-index: 1;
     position: absolute;
     right: 15px;
     display: flex;
     
 }
+
+
 .toolbarhidden {
     display: none;
 }
+
+.search-dropdown {
+    position: fixed; /* Use fixed positioning */
+    top: 50px; /* Adjust this based on how far down you want the dropdown */
+    right: 50px;
+    width: 300px; /* Fixed width for the dropdown */
+    outline: 1px solid rgba(0, 0, 0, 0.1);
+    background: white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    pointer-events: auto; /* Ensure dropdown is clickable */
+    white-space: nowrap; /* Prevent wrapping */
+}
+.hidden {
+    display: none;
+}
+
+.section {
+    background-color: #111214;
+    padding: 10px;
+    display: flex;            
+    justify-content: space-between;
+    align-items: center;         
+}
+
+.header {
+    border-radius: 20px;
+    font-weight: bold;
+    margin-bottom: 0; 
+}
+
+.small-user {
+    color: gray;
+    font-size: 14px;
+    margin-left: auto; 
+}
+
+.search-content {
+    display: flex;
+    flex-direction: column;
+}
+
+.search-button {
+    padding: 5px;
+    border: 1px solid #007BFF;
+    background: #007BFF;
+    color: white;
+    text-align: center;
+    margin: 3px 0;
+    border-radius: 3px;
+    cursor: pointer;
+}
+
+.search-button:hover {
+    background: #0056b3;
+}
 .searchInput {
     border: none;
-    width: 144px;
+    width: 144px; /* This is the width of the input */
     height: 22px;
     text-indent: 5px;
     color: oklab(0.686679 -0.00398019 -0.0150182);
@@ -468,8 +525,9 @@
     border-radius: 5px;
     transition: width 0.5s ease-in-out;
     outline: none;
-    margin-right: -40px;
+    margin: 0;
 }
+
 
 #searchInputMagnify {
     margin-left:10px; 
@@ -495,14 +553,13 @@
 
 
 .iconWrapper {
-    
     display: flex;
     align-items: center;
     margin-top: 9px;
-    margin-left: 15px;
+    margin-left: 15px; /* This can be adjusted for positioning */
     color: rgb(180, 185, 192);
+    position: relative; /* Keep dropdown anchored relative to this */
 }
-
 
 .iconWrapper :hover {
     color: rgb(219, 222, 225);
@@ -1391,11 +1448,10 @@ textarea::-webkit-scrollbar-track {
 }
 
 
-/* Updated button styles */
 .message-button {
     width: 35px;
     height: 25px;
-    z-index: 5;
+    z-index: 1;
     border: none;
     outline: 1px solid #232428;
     background-color: #313338;

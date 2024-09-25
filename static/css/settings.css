@@ -103,18 +103,7 @@ th {
     display: none;
 }
 
-.guilds-list {
 
-    list-style-type: none;
-    background-color: #1e1f22;
-    position: absolute;
-
-    height: 100%;
-    margin-top: 0px;
-    width: 32px;     
-    z-index: 2;
-
-}
 
 .guilds-list li img {
     transition: border-radius 0.5s ease, border 0.5s ease; 
@@ -534,9 +523,9 @@ th {
 .pop-up-content {
     color: white;
     overflow-y: scroll;
-    max-height: calc(100% - 38px); /* Adjust based on the height of .pop-button-container */
+    max-height: calc(100% - 38px); 
     padding: 50px;
-    margin-bottom: 38px; /* Add space for the .pop-button-container */
+    margin-bottom: 38px; /
 }
 
 .pop-up-subject {
@@ -1633,12 +1622,11 @@ th {
 .vertical-line-long-black {
     border: none;
     position: absolute; 
-    width: 100%;
     margin-top: 48px;
+    width: 100%;
     border-top: 1px solid #1f1e1ea6;
     transform: rotate(180deg);
-    left: 60px; 
-    z-index: 11;
+    z-index: 1;
 }
 
 
@@ -1658,7 +1646,7 @@ th {
     left: 22px;
     top: 0px;
     z-index: 3;
-    pointer-events: auto; /* Enable pointer events on the container */
+    pointer-events: auto; 
 }
 
 #guild-container {
@@ -1670,7 +1658,7 @@ th {
     left: 72px;
     top: -2px;
     z-index: 3;
-    pointer-events: auto; /* Enable pointer events on the container */
+    pointer-events: auto; 
 }
 
 
@@ -1678,11 +1666,9 @@ th {
 
 
 .guilds-list {
-
     list-style-type: none;
     background-color: #1e1f22;
-    position: absolute;
-
+    position: fixed;
     height: 100%;
     margin-top: 0px;
     width: 32px;     

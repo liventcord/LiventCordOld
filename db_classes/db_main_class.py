@@ -168,7 +168,7 @@ class DatabaseManager:
         
         if self.is_post_gress:
             try:      
-                self.connection_pool = pool.SimpleConnectionPool(1, 10,  
+                self.connection_pool = pool.SimpleConnectionPool(1, 50,  
                     user='liventcord',password=password,host='localhost',port='5432', database='liventdb'
                 )
             except Exception as e:
@@ -226,8 +226,9 @@ class DatabaseManager:
             self.print_message(Fore.BLUE, f"Query: {query} {f'Args: {args}' if args else ''}")
 
             if args is not None:
-                if not isinstance(args, tuple):
-                    args = (args,)
+                # Ensure args is a flat list or tuple
+                if not isinstance(args, (list, tuple)):
+                    args = [args]  
                 cursor.execute(query, args)
             else:
                 cursor.execute(query)
@@ -243,6 +244,7 @@ class DatabaseManager:
 
         except Exception as e:
             print(f"{e}, Query: {query}, Args: {args}")
+
 
     def fetch_multiple(self, query, args=None,row_factory=False):
         """
@@ -274,32 +276,43 @@ class DatabaseManager:
             
     def execute_query(self, query, *args):
         """
-        Executes query in the database.
+        Executes query in the PostgreSQL database.
 
         :param query: The SQL query to execute.
-        :param args: The parameters to use in the SQL query.
+        :param args: The parameters to use in the SQL query (should be passed as a tuple).
         """
         conn = None
         cursor = None
 
-        conn = self.connect()
-        if not conn: 
-            db_logger.exception("Connection is ignored")
-            return
-        
-        cursor = conn.cursor()
-        
-        self.print_message(Fore.CYAN, f"Query: {query} {f'Args: {args}' if args else ''} ")
+        try:
+            conn = self.connect()
+            if not conn:
+                logger.exception("Connection is ignored")
+                return
 
-        if args:
-            # Unpack single tuple args
-            if len(args) == 1 and isinstance(args[0], tuple):
-                cursor.execute(query, args[0])  # Unpack the tuple
+            cursor = conn.cursor()
+
+            self.print_message(Fore.CYAN, f"Query: {query}")
+            self.print_message(Fore.CYAN, f"Args: {args}")
+
+            if args:
+                if len(args) == 1 and isinstance(args[0], tuple):
+                    print(query)
+                    print("---")
+                    print(args[0])
+                    cursor.execute(query, args[0]) 
+                else:
+                    cursor.execute(query, args) 
             else:
-                cursor.execute(query, args)  # Use args as-is
-        else:
-            cursor.execute(query)
-        
-        conn.commit()
-        self.close_connection(conn)
+                cursor.execute(query)
+
+            conn.commit()
+
+        except Exception as e:
+            print(f"Error executing query: {e}")
+            raise
+        finally:
+            if conn:
+                self.close_connection(conn)
+
 

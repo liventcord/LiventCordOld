@@ -84,7 +84,16 @@ class PostGresFileManager(DatabaseManager):
         elif _file_type == str(FileType.GUILDIMG):
             tablename = "guilds_files"
         if tablename: return tablename
-        
+    def truncate_params(self, params):
+        """ Truncate binary data for logging. """
+        truncated = []
+        for param in params:
+            if isinstance(param, bytes):
+                # Only show the length of binary data or the first few bytes
+                truncated.append(f'<binary data: {len(param)} bytes>')
+            else:
+                truncated.append(param)
+        return truncated
     def upload_file(self, file_name, _file_type, content, extension, guild_id=None,channel_id=None,user_id=None,is_guild_image=False):
         
         file_id = guild_id if guild_id and is_guild_image else create_random_id()
@@ -101,25 +110,28 @@ class PostGresFileManager(DatabaseManager):
             if guild_id:
                 if channel_id:
                     insert_query = f"""
-                        INSERT INTO {table_name} (file_name, file_id, user_id, guild_id, content, extension)
-                        VALUES (%s, %s, %s, %s, %s)
+                        INSERT INTO {table_name} (file_name, file_id, user_id, guild_id, channel_id, content, extension)
+                        VALUES (%s, %s, %s, %s, %s, %s, %s)
                     """
-                    insert_params = (file_name, file_id, user_id, guild_id, content, extension)
+                    insert_params = (file_name, file_id, user_id, guild_id, channel_id, content, extension)
                 else:
                     insert_query = f"""
-                        INSERT INTO {table_name} (file_name, file_id, user_id, guild_id,channel_id, content, extension)
-                        VALUES (%s, %s, %s, %s, %s)
+                        INSERT INTO {table_name} (file_name, file_id, user_id, guild_id, content, extension)
+                        VALUES (%s, %s, %s, %s, %s, %s)
                     """
-                    insert_params = (file_name, file_id, user_id, guild_id,channel_id, content, extension)
+                    insert_params = (file_name, file_id, user_id, guild_id, content, extension)
             else:
                 insert_query = f"""
                     INSERT INTO {table_name} (file_name, file_id, user_id, content, extension)
-                    VALUES (%s, %s, %s, %s)
+                    VALUES (%s, %s, %s, %s, %s)
                 """
                 insert_params = (file_name, file_id, user_id, content, extension)
-            
+            print("Insert Query:", insert_query)
+            print("Insert Params:", self.truncate_params(insert_params))
             self.execute_query(insert_query, *insert_params)
-            logger.info(f"Inserted file {file_id, user_id}, {file_name}")
+            logger.info(f"Inserted file {file_id}, {file_name}")
+
+
 
     def upload_attachment_file(self,file_name,user_id,file_content,extension,guild_id,channel_id):
         self.upload_file(file_name,FileType.ATTACHMENT,file_content,extension,guild_id,channel_id,user_id=user_id)
@@ -128,7 +140,7 @@ class PostGresFileManager(DatabaseManager):
         self.upload_file(file_name,FileType.EMOJI,file_content,extension,guild_id,user_id=user_id)   
         
     def upload_profile_file(self,user_id,file_content,extension):
-        self.upload_file(user_id,FileType.PROFILE,file_content,extension)
+        self.upload_file(user_id,FileType.PROFILE,file_content,extension,user_id=user_id)
     
     def upload_guild_file(self,file_name,user_id,file_content,extension,guild_id):
         self.upload_file(file_name,FileType.GUILDIMG,file_content,extension,guild_id,user_id=user_id,is_guild_image=True)
@@ -179,7 +191,7 @@ class PostGresFileManager(DatabaseManager):
             file_id = str(file_id)
             tablename = self.get_table_name(_filetype)
             query = f"SELECT file_name, content, extension FROM {tablename} WHERE file_id = %s"
-            _file = self.fetch_single(query, (file_id,file_id))
+            _file = self.fetch_single(query, (file_id))
             if _file:
                 file_name, content, extension = _file
                 file_stream = BytesIO(content)

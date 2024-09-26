@@ -126,8 +126,6 @@ class PostGresFileManager(DatabaseManager):
                     VALUES (%s, %s, %s, %s, %s)
                 """
                 insert_params = (file_name, file_id, user_id, content, extension)
-            print("Insert Query:", insert_query)
-            print("Insert Params:", self.truncate_params(insert_params))
             self.execute_query(insert_query, *insert_params)
             logger.info(f"Inserted file {file_id}, {file_name}")
 

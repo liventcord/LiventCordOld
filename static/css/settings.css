@@ -239,7 +239,7 @@ th {
     position: absolute;
     border-radius: 50%;
     cursor: pointer;
-    transition: border-radius 0.5s ease-out;
+    transition: border-radius 0.2s ease-out;
 }
 #guild-image,
 #guild-image-remove {
@@ -1409,7 +1409,7 @@ th {
 
     left: 5px;
     bottom: 1px;
-    transition: border-radius 0.5s ease-out;
+    transition: border-radius 0.2s ease-out;
 }
 #self-bubble {
     background-color: #23a55a; 

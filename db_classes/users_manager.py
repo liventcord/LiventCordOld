@@ -141,8 +141,6 @@ class UsersManager(DatabaseManager):
             return
         current_time = datetime.now(UTC).isoformat()
         query = "UPDATE users SET last_login = ? WHERE user_id = ?"
-        print(current_time, type(current_time))
-        print(user_id, type(user_id))
         self.execute_query(query, current_time, user_id)
 
     def db_get_users_for_status_admin_update(self, online_users):

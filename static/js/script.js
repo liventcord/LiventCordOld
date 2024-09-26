@@ -283,7 +283,7 @@ function replaceCustomEmojis(message) {
             if (currentCustomEmojis.hasOwnProperty(emojiName)) {
                 return `<img src="${getEmojiPath(currentCustomEmojis[emojiName])}" alt="${emojiName}" style="width: 64px; height: 38px; vertical-align: middle;" />`;
             } else {
-                return match; // Return unchanged if emoji not found in customEmojis
+                return match;
             }
         });
         return message1;
@@ -1044,6 +1044,12 @@ function disableSnowOnSettingsOpen() {
 let isParty = false;
 function toggleParty() {
     isParty = !isParty;
+
+    if (isParty) {
+        enableBorderMovement(); // Start analyzing audio if party mode is enabled
+    } else {
+        stopAudioAnalysis(); // Stop analyzing audio if party mode is disabled
+    }
 }
 
 function enableSnow() {
@@ -1251,45 +1257,48 @@ function assignElements() {
 
 }
 
-
 function initializeMusic() {
-    const modal = createEl('div',{className : 'modal'});
+    const modal = createEl('div', { className: 'modal'});
     document.body.appendChild(modal);
-    
+
     const songs = [
-        '/static/sounds/musics/2.mp3',
         '/static/sounds/musics/1.mp3',
+        '/static/sounds/musics/2.mp3',
         '/static/sounds/musics/3.mp3',
         '/static/sounds/musics/4.mp3'
     ];
 
     let currentSongIndex = 0;
-    const audio = new Audio(songs[currentSongIndex]); 
 
     function playCurrentSong() {
-        audio.src = songs[currentSongIndex];
-        audio.play(); 
-    
+        const currentSong = songs[currentSongIndex];
+        
+        playAudio(currentSong); 
+        
+        const audio = new Audio(currentSong);
         audio.onended = function () {
             currentSongIndex++;
             if (currentSongIndex >= songs.length) {
                 currentSongIndex = 0;
             }
-    
-            playCurrentSong();
+
+            playCurrentSong(); 
         };
     }
 
     modal.addEventListener('click', function () {
-
         playCurrentSong();
-
-        modal.style.display = 'none';
+        modal.style.display = 'none'; 
     });
 }
+
+
+
+
+
+
 document.addEventListener('DOMContentLoaded', function () {
-    //initializeMusic();
-    
+
     assignElements();
     
     getId('globalSearchInput').addEventListener('click', function(){

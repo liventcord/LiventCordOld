@@ -191,7 +191,6 @@ def get_app_page(friend_id=None,guild_id=None, channel_id=None,guild_name=None,a
     dm_users_info = json.dumps(dm_users_info)
     blocked_users = friends_manager.get_blocked_users(user_id)
     shared_guilds_map = guild_manager.get_shared_guilds_map(user_id,friend_ids)
-    print(shared_guilds_map)
     
     context = {
         'user_name': nickname,
@@ -754,7 +753,6 @@ def upload_profile_pic():
     photo = file.read()
 
     try:
-        print(is_guild)
         if is_guild:
             
             if not guild_manager.can_user_upload_guild_image(guild_id,user_id):  return jsonify({'error': 'Access denied'}), 403
@@ -851,7 +849,8 @@ def join_voice_channel(data):
     if channel_id not in users_in_voice[guild_id]:
         users_in_voice[guild_id][channel_id] = []
     
-    users_in_voice[guild_id][channel_id].append(user_id)
+    if not users_in_voice[guild_id][channel_id]:
+        users_in_voice[guild_id][channel_id].append(user_id)
     redis_manager.set_to_redis_list('voice_users', users_in_voice)
     
     response = {
@@ -1380,30 +1379,21 @@ def handle_message_delete(data):
     try:
         user_id = get_user_id()
         if not user_id or not 'message_id' in data or not 'channel_id' in data or not 'is_dm' in data:
-            print("R1")
             return
         guild_id = data.get('guild_id')
         message_id = data.get('message_id')
         channel_id = data.get('channel_id')
         is_dm = data.get('is_dm')
         if is_dm:
-            print("dm")
             if not friends_manager.check_if_friends(user_id,channel_id): 
                 print("Not friends.")
 
-            print("deleting1")
             success = direct_messages_manager.delete_from_db(message_id,user_id,channel_id)
-            print("Deleting", success)
             if success:
                 emit_manager.emit_deleted_message_to_friend_self(user_id,channel_id,message_id)
         else:
-            print("Not dm")
-            if not 'guild_id' in data:
-                print("R2")
-                return
-            if not guild_manager.check_users_guild(guild_id, user_id):
-                print("R3")
-                return
+            if not 'guild_id' in data: return
+            if not guild_manager.check_users_guild(guild_id, user_id): return
             messages_manager = get_guild_messages_manager(guild_id)
             success = messages_manager.delete_from_db(message_id,channel_id)
             if success:
@@ -1452,8 +1442,6 @@ def fetch_users_eventt(data):
     online_users = redis_manager.get_online_users(users_manager)
     users_data = friends_manager.get_users_friends_status(user_id, request_type,online_users)
     emit('users_data_response', {'users': users_data,'isPending':isReqPending}, broadcast=False)
-
-
     
 
 def get_user_id(isNick=False):

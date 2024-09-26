@@ -535,6 +535,8 @@ function createProfileContext(userData) {
     return context;
 }
 
+
+
 function addContextListeners() {
     document.addEventListener('contextmenu', function (event) {
         event.preventDefault();
@@ -621,6 +623,7 @@ function createMessageContext(message_id, user_id) {
 
 
 document.addEventListener('DOMContentLoaded', async function () {
+    
     isDomLoaded = true;
     currentUserId = passed_user_id;
     currentUserName = user_name;
@@ -629,6 +632,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     getId('tb-showprofile').addEventListener('click', toggleUsersList);
     selectSettingCategory(MyAccount);
     selfProfileImage = getId("self-profile-image");
+
+    selfProfileImage.addEventListener("mouseover", function() { this.style.borderRadius = '0px'; });
+    selfProfileImage.addEventListener("mouseout", function() { this.style.borderRadius = '50%'; });
+
     microphoneButton = getId("microphone-button");
     earphoneButton = getId("earphone-button");
     selfBubble = getId("self-bubble");
@@ -656,6 +663,10 @@ document.addEventListener('DOMContentLoaded', async function () {
     addContextListeners();
     const val = loadBooleanCookie('isParty');
     isParty = val;
+    initializeMp3Yt();
+    if (isParty && isAudioPlaying) {
+        enableBorderMovement();
+    }
     
     getId("variableScript").remove();
 
@@ -1193,6 +1204,11 @@ function selectSettingCategory(settingtype) {
                 const partyToggle = getId('party-toggle');
                 const val = loadBooleanCookie('isParty');
                 isParty = val;
+                if(isParty) {
+                    enableBorderMovement();
+                } else {
+                    stopCurrentMusic();
+                }
                 toggleCheckBox(partyToggle, val);
                 handleToggleClick(partyToggle, () => {
                     toggleParty();
@@ -2291,17 +2307,12 @@ function changeCurrentDm(friend_id) {
 
     isChangingPage = false;
 }
-function playAudio(audio_string) {
-    try {
-        const audio = new Audio(audio_string);
-        if(audio) {
-            audio.play();
-        }
-    }
-    catch(error) {
-        console.log(error);
-    }
-}
+
+
+
+
+
+
 function changecurrentGuild() {
     isChangingPage = true;
     isOnMe = false;
@@ -3199,59 +3210,3 @@ socket.on('update_nick',data => {
 });
 
 
-
-const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-const bufferSize = 4096;
-
-socket.on('incoming_audio', async data => {
-
-    if (data && data.byteLength > 0) {
-        try {
-            const arrayBuffer = convertToArrayBuffer(data);
-            const decodedData = await decodeAudioDataAsync(arrayBuffer);
-            if (decodedData) {
-                playAudioBuffer(decodedData);
-            } else {
-                console.log('Decoded audio data is empty or invalid');
-            }
-        } catch (error) {
-            console.log('Error decoding audio data:');
-
-        }
-    } else {
-        console.log('Received silent or invalid audio data');
-    }
-});
-
-function convertToArrayBuffer(data) {
-    if (data instanceof ArrayBuffer) {
-        return data;
-    } else if (data.buffer instanceof ArrayBuffer) {
-        return data.buffer;
-    } else {
-        throw new Error('Unsupported data format');
-    }
-}
-
-function decodeAudioDataAsync(arrayBuffer) {
-    try {
-
-    }
-    catch(error) {
-        return new Promise((resolve, reject) => {
-            audioContext.decodeAudioData(arrayBuffer, resolve, reject);
-        });
-
-    }
-}
-
-function playAudioBuffer(audioBuffer) {
-    const source = audioContext.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(audioContext.destination);
-    source.start(0);
-}
-
-function joinToGuild(invite_id) {
-    socket.emit('join_to_guild',{'invite_id':invite_id});
-}

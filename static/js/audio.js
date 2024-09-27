@@ -56,7 +56,7 @@ function joinToGuild(invite_id) {
 }
 
 
-let currentAudioPlayer = null;
+let currentAudioPlayer;
 let isAudioPlaying = false; 
 let analyser = null; // Track the AnalyserNode
 let source = null; // Track the MediaElementSourceNode
@@ -70,43 +70,65 @@ function enableBorderMovement() {
     }
 }
 
-function startAudioAnalysis() {
-    if (!currentAudioPlayer) return; // Ensure there's an audio player
+function stopAudioAnalysis() {
+    if (!isAnalyzing) return;
 
-    // Disconnect any existing source if it exists
-    if (source) {
-        source.disconnect(); // Disconnect the previous source
-        source = null; // Clear the source reference
+    isAnalyzing = false;
+
+    const userProfiles = userList.querySelectorAll('.profile-container');
+
+    let selfProfileDisplayElementList;
+    
+    userProfiles.forEach(profile => {
+        if (profile.id === currentUserId) {
+            const selfProfileDisplayElementList = profile.querySelector('.profile-pic');
+            if (selfProfileDisplayElementList) {
+                selfProfileDisplayElementList.style.borderRadius = '50%'; // Set border radius
+            }
+        }
+    });
+
+    const profileDisplayElement = document.getElementById('profile-display');
+    const selfProfileDisplayElement = document.getElementById('self-profile-image');
+    
+    resetWiggleEffect(profileDisplayElement, selfProfileDisplayElement,selfProfileDisplayElementList);
+}
+
+function startAudioAnalysis() {
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    // Check if `currentAudioPlayer` is a valid HTMLMediaElement
+    if (!(currentAudioPlayer instanceof HTMLMediaElement)) {
+        console.error('currentAudioPlayer is not a valid HTMLMediaElement.');
+        return;
     }
 
-    // Create a new MediaElementSourceNode only if the current audio player is valid
-    source = audioContext.createMediaElementSource(currentAudioPlayer);
-    analyser = audioContext.createAnalyser(); // Create an analyser node
+    const source = audioContext.createMediaElementSource(currentAudioPlayer);
+    const analyser = audioContext.createAnalyser();
     source.connect(analyser);
     analyser.connect(audioContext.destination);
 
-    isAnalyzing = true; // Mark that audio analysis is ongoing
+    isAnalyzing = true;
 
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
     let recentVolumes = []; // Buffer to hold recent volume readings
     const bufferSize = 10; // Number of samples to keep for average calculation
-    let isAnimating = false; // Flag to track animation state
 
     function analyzeAudio() {
         if (!isAnalyzing) return; // Exit if analysis is stopped
-
+    
         const profileDisplayElement = document.getElementById('profile-display');
         const selfProfileDisplayElement = document.getElementById('self-profile-image');
-
-        analyser.getByteFrequencyData(dataArray);
     
+        analyser.getByteFrequencyData(dataArray);
+        
         let sum = 0;
         for (let i = 0; i < dataArray.length; i++) {
             sum += dataArray[i];
         }
-    
+        
         const averageVolume = sum / dataArray.length;
-
+    
         recentVolumes.push(averageVolume);
         if (recentVolumes.length > bufferSize) {
             recentVolumes.shift(); // Remove the oldest volume if the buffer is full
@@ -114,25 +136,62 @@ function startAudioAnalysis() {
     
         const dynamicThreshold = recentVolumes.reduce((acc, val) => acc + val, 0) / recentVolumes.length;
     
-        if (averageVolume > dynamicThreshold && !isAnimating) {
-            isAnimating = true; // Set the animation state to true
+        const scaleFactor = 1 + (averageVolume / 256); // Normalize the value for scale
+        const borderColor = `rgb(${Math.min(255, averageVolume * 2)}, 0, ${Math.max(0, 255 - averageVolume * 2)})`;
     
-            // Apply wiggle effect to borders
-            applyWiggleEffect(profileDisplayElement, selfProfileDisplayElement);
+        // If the average volume exceeds the dynamic threshold, enable dancing borders
+        if (averageVolume > dynamicThreshold) {
+            if (profileDisplayElement) {
+                profileDisplayElement.classList.add('dancing-border'); // Add dancing effect
+                profileDisplayElement.style.transform = `scale(${scaleFactor}) rotate(${Math.sin(averageVolume / 100) * 2}deg)`;
+                profileDisplayElement.style.borderColor = borderColor;
+            }
+            if (selfProfileDisplayElement) {
+                selfProfileDisplayElement.classList.add('dancing-border'); // Add dancing effect
+                selfProfileDisplayElement.style.transform = `scale(${scaleFactor}) rotate(${Math.sin(averageVolume / 100) * 2}deg)`;
+                selfProfileDisplayElement.style.borderColor = borderColor;
+            }
     
-            // Reset animation state after a short duration
-            setTimeout(() => {
-                isAnimating = false; // Reset the animation state
-            }, 100); // Adjust duration to match wiggle animation
+            const userProfiles = userList.querySelectorAll('.profile-container');
+            userProfiles.forEach(profile => {
+                if (profile.id === currentUserId) {
+                    const selfProfileDisplayElementList = profile.querySelector('.profile-pic');
+                    selfProfileDisplayElementList.classList.add('dancing-border'); // Add dancing effect
+                    selfProfileDisplayElementList.style.transform = `scale(${scaleFactor}) rotate(${Math.sin(averageVolume / 100) * 2}deg)`;
+                    selfProfileDisplayElementList.style.borderColor = borderColor;
+                    selfProfileDisplayElementList.style.borderWidth = '1px';
+                }
+            });
+        } else {
+            // If the average volume does not exceed the threshold, reset styles
+            if (profileDisplayElement) {
+                profileDisplayElement.classList.remove('dancing-border'); // Remove dancing effect
+                profileDisplayElement.style.transform = `scale(1)`;
+                profileDisplayElement.style.borderColor = 'rgb(17, 18, 20);'
+            }
+            if (selfProfileDisplayElement) {
+                selfProfileDisplayElement.classList.remove('dancing-border'); // Remove dancing effect
+                selfProfileDisplayElement.style.transform = `scale(1)`;
+                selfProfileDisplayElement.style.borderColor = 'rgb(17, 18, 20);'
+            }
+            const userProfiles = userList.querySelectorAll('.profile-container');
+            userProfiles.forEach(profile => {
+                if (profile.id === currentUserId) {
+                    const selfProfileDisplayElementList = profile.querySelector('.profile-pic');
+                    selfProfileDisplayElementList.classList.remove('dancing-border'); // Remove dancing effect
+                    selfProfileDisplayElementList.style.transform = `scale(1)`;
+                    selfProfileDisplayElementList.style.borderColor = 'rgb(17, 18, 20);'
+                }
+            });
         }
     
         requestAnimationFrame(analyzeAudio);
     }
 
-    analyzeAudio(); // Start audio analysis
+    
+    analyzeAudio();
 }
 
-// Function to stop the current music
 function stopCurrentMusic() {
     if (currentAudioPlayer) {
         currentAudioPlayer.pause(); // Pause the audio
@@ -141,7 +200,6 @@ function stopCurrentMusic() {
         
         resetProfileBorders(); // Reset visual effects
 
-        // Disconnect the source if it exists
         if (source) {
             source.disconnect();
             source = null; // Clear the source reference
@@ -154,50 +212,101 @@ function stopCurrentMusic() {
         isAnalyzing = false; // Reset analysis state
     }
 }
-function stopCurrentMusic() {
-    if (currentAudioPlayer) {
-        currentAudioPlayer.pause(); // Pause the audio
-        currentAudioPlayer.currentTime = 0; // Reset playback to the beginning
-        isAudioPlaying = false; // Update the playing state
-        
-        resetProfileBorders(); // Reset visual effects
 
-        stopAudioAnalysis(); // Call to stop audio analysis
-    }
-}
-
-// Function to reset border radius of profile images
 function resetProfileBorders() {
     const profileDisplayElement = document.getElementById('profile-display');
     const selfProfileDisplayElement = document.getElementById('self-profile-image');
 
     const userProfiles = userList.querySelectorAll('.profile-container');
 
-    // Reset border radius to 50% for current user profile
     userProfiles.forEach(profile => {
         if (profile.id === currentUserId) {
             const selfProfileDisplayElementList = profile.querySelector('.profile-pic');
             if (selfProfileDisplayElementList) {
                 selfProfileDisplayElementList.style.borderRadius = '50%'; // Set border radius
+                selfProfileDisplayElementList.style.borderColor = ''; // Set border radius
+                selfProfileDisplayElementList.style.transform = ''; // Set border radius
             }
         }
     });
 
     if (profileDisplayElement) {
         profileDisplayElement.style.borderRadius = '50%'; // Set border radius
+        profileDisplayElement.style.borderColor = ''; // Set border radius
+        profileDisplayElement.style.transform = ''; // Set border radius
     }
     if (selfProfileDisplayElement) {
         selfProfileDisplayElement.style.borderRadius = '50%'; // Set border radius
+        selfProfileDisplayElement.style.borderColor = ''; // Set border radius
+        selfProfileDisplayElement.style.transform = ''; // Set border radius
     }
 }
 
 
-// Function to initialize and play audio from a URL
-async function playAudio(audio_url) {
+
+async function playAudio(audioUrl, isYtMp3) {
+    try {
+        if(!currentAudioPlayer) {
+            currentAudioPlayer = getId('audio-player');
+        }
+        if (!isYtMp3) {
+            const response = await fetch(audioUrl);
+            if (!response.ok) {
+                throw new Error(`Failed to fetch audio: ${response.statusText}`);
+            }
+            const reader = response.body.getReader();
+            const stream = new ReadableStream({
+                start(controller) {
+                    function push() {
+                        reader.read().then(({ done, value }) => {
+                            if (done) {
+                                controller.close();
+                                return;
+                            }
+                            controller.enqueue(value);
+                            push();
+                        });
+                    }
+                    push();
+                }
+            });
+            const audioBlob = await new Response(stream).blob();
+            const audioUrlBlob = URL.createObjectURL(audioBlob); // Generate Blob URL
+
+            // Set the Blob URL as the source for the <audio> element
+            currentAudioPlayer.src = audioUrlBlob;
+        } else {
+            currentAudioPlayer.src = audioUrl; // Set audio URL directly for YouTube MP3 links
+        }
+
+
+
+        currentAudioPlayer.onplay = function () {
+            if (isParty) {
+                enableBorderMovement(); // Trigger your visual effects
+            }
+        };
+
+        currentAudioPlayer.onended = function () {
+            stopCurrentMusic(); // Handle when audio stops
+        };
+
+        await currentAudioPlayer.play(); // Play the audio
+        isAudioPlaying = true;
+
+    } catch (error) {
+        console.error("Error playing audio:", error);
+    }
+}
+
+
+
+
+
+async function playAudio2(audio_url) {
     const audio = new Audio(); // Create an Audio object
 
     try {
-        // Fetch audio in chunks
         const response = await fetch(audio_url);
         if (!response.ok) {
             throw new Error(`Failed to fetch audio: ${response.statusText}`);
@@ -248,62 +357,69 @@ async function playAudio(audio_url) {
 
 
 
-
-
+let isInitializedAudio;
 function initializeMp3Yt() {
     const modal = createEl('div', { className: 'modal' });
     document.body.appendChild(modal);
-    
-    document.addEventListener('click', async function () {
-        if (isAudioPlaying) {
+
+    const handleClick = function () {
+        if (isAudioPlaying || isInitializedAudio) {
             return; 
         }
 
+        document.removeEventListener('click', handleClick);
         modal.remove();
+        
         const params = {
-            url: 'https://www.youtube.com/watch?v=y2XArpEcygc'
+            url: 'https://www.youtube.com/watch?v=VieIk9rjCos'
         };
 
-        try {
-            const response = await fetch('https://mp3.liventcord.workers.dev/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(params)
-            });
-
-            if (!response.ok) {
-                throw new Error(`Error: ${response.statusText}`);
+        socket.once('mp3yt_response', function(data) {
+            if (data && data.url) { 
+                const audioUrl = data.url;
+                isAudioPlaying = true;
+                playAudio(audioUrl);
+            } else {
+                console.error("No audio URL received from the server.");
             }
+        });
 
-            const audioData = await response.json();
-            const audioUrl = audioData.url;  
+        socket.emit('get_ytmp3', params);
+        isInitializedAudio = true;
+        
+    };
 
-            // Set the flag to true to indicate that audio is now playing
-            isAudioPlaying = true;
-            currentAudioPlayer = await playAudio(audioUrl);
+    document.addEventListener('click', handleClick);
+}
 
-            const resultDiv = modal.querySelector('.result');
-            if (resultDiv) {
-                resultDiv.innerHTML = '';
-            }
 
-        } catch (error) {
-            console.error(error);
+
+
+function resetWiggleEffect(...elements) {
+    elements.forEach(element => {
+        if (element) {
+            element.style.transition = 'none';
+            element.style.borderRadius = '0%'; 
+            setTimeout(() => {
+                element.style.transition = 'border-radius 0.1s'; 
+            }, 0);
         }
     });
 }
 
-// Apply wiggle effect to specified elements
-function applyWiggleEffect(...elements) {
-    elements.forEach(element => {
-        if (element) {
-            element.style.transition = 'border-radius 0.1s';
-            element.style.borderRadius = '50%';
-            setTimeout(() => {
-                element.style.borderRadius = '0%'; // Reset after wiggle
-            }, 100); // Match this duration with the transition time
+function applyWiggleEffect(profileElement, selfProfileElement) {
+    if(profileElement) {
+        profileElement.classList.add('dancing-border');
+    }
+    if(selfProfileElement) {
+        selfProfileElement.classList.add('dancing-border');
+    }
+    setTimeout(() => {
+        if(profileElement) {
+            profileElement.classList.remove('dancing-border');
         }
-    })  ;
+        if(selfProfileElement) {
+            selfProfileElement.classList.remove('dancing-border');
+        }
+    }, 500); 
 }

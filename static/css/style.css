@@ -1556,3 +1556,80 @@ textarea::-webkit-scrollbar-track {
     width: 100%; /* Full width */
     height: 100%; /* Full height */
 }
+
+
+
+
+
+#profile-display, #self-profile-image {
+    border: 8px solid rgb(17, 18, 20); /* Initial border color */
+    border-radius: 8px; /* Optional: makes the corners rounded */
+    transition: transform 0.1s ease, border-color 0.1s ease; /* Smooth transitions */
+    position: relative; /* Ensure positioning works for absolute children */
+}
+
+#self-profile-image {
+    border: 1px solid rgb(17, 18, 20); 
+}
+
+@keyframes dance {
+    0% {
+        transform: rotate(0deg);
+        border-color: rgb(17, 18, 20);
+    }
+    25% {
+        transform: rotate(2deg);
+        border-color: rgb(17, 18, 20);
+    }
+    50% {
+        transform: rotate(-2deg);
+        border-color: rgb(17, 18, 20);
+    }
+    75% {
+        transform: rotate(2deg);
+        border-color: rgb(17, 18, 20);
+    }
+    100% {
+        transform: rotate(0deg);
+        border-color: rgb(17, 18, 20);
+    }
+}
+
+.dancing-border {
+    animation: dance 0.5s infinite; /* Animation details */
+    border-width: 5px; /* Adjust thickness as needed */
+    border-style: solid; /* Ensure there is a border style */
+    border-color: rgb(17, 18, 20);
+}
+
+#userMentionDropdown {
+    border: 1px solid #3c3e42;
+    display: none; /* Hidden by default */
+    position: absolute; /* Position relative to the nearest positioned ancestor */
+    background: #2b2d31;
+    max-height: 150px; /* Maximum height for the dropdown */
+    width: calc(100vw - 585px); /* Full width minus specific pixels */
+    overflow-y: auto; /* Enable vertical scrolling */
+    z-index: 1000; /* Make sure it appears above other elements */
+    bottom: 100%; /* Position the dropdown above the input */
+    left: 0; /* Align the dropdown with the left edge of the input */
+    margin-bottom: 4px; /* Space between input and dropdown */
+}
+
+/* Styles for mention options */
+.mention-option {
+    padding: 8px; /* Padding inside each option */
+    cursor: pointer; /* Pointer cursor on hover */
+}
+
+.mention-option:hover {
+    background-color: #232427; /* Background on hover */
+}
+
+.mention-highlight {
+    background-color: #35373c; /* Highlighted background */
+}
+
+.mention {
+    color: blue; /* Mention text color */
+}

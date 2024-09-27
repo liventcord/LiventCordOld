@@ -276,9 +276,7 @@ function handleUserClick(userName) {
 
 function replaceCustomEmojis(message) {
     if(message) {
-
         const regex = /<:([^:>]+):(\d+)>/g;
-    
         let message1 = message.replace(regex, (match, emojiName, emojiId) => {
             if (currentCustomEmojis.hasOwnProperty(emojiName)) {
                 return `<img src="${getEmojiPath(currentCustomEmojis[emojiName])}" alt="${emojiName}" style="width: 64px; height: 38px; vertical-align: middle;" />`;
@@ -980,7 +978,89 @@ function debounce(func, delay) {
 }
 let typingTimeout;
 
+
+function getUserIdFromNick(nick) {
+    for (const [userId, userInfo] of Object.entries(userNames)) {
+        if (userInfo.nick === nick) {
+            return userId;
+        }
+    }
+    return null;
+}
+function getCurrentDmUsers() {
+    return {
+        currentUserId: { nick:  currentUserName },
+        currentDmId: { nick : getUserNick(currentDmId)}
+    }
+}
+
+let currentIndex = -1;
+function updateUserMentionDropdown(value) {
+    const mentionRegex = /@\w*/g;
+    const match = value.match(mentionRegex);
+    if (match && match.length) {
+        const lastMention = match[match.length - 1];
+        if (lastMention) {
+            const currentUsers = isOnGuild ? guild_users_cache[currentGuildId] : getCurrentDmUsers();
+            if (!currentUsers) return;
+
+            // Convert currentUsers object to an array
+            const usersArray = Object.values(currentUsers); // Get all user objects
+            
+            // Filter users based on the mention
+            const filteredUsers = usersArray.filter(user => user.name.toLowerCase().startsWith(lastMention.slice(1).toLowerCase()));
+
+            if (filteredUsers.length) {
+                userMentionDropdown.innerHTML = filteredUsers.map(user => `
+                    <div class="mention-option" data-userid="${user.user_id}" onclick="selectUser('${user.user_id}', '${user.name}')">
+                        ${user.name}
+                    </div>
+                `).join('');
+                userMentionDropdown.style.display = 'block';
+                currentIndex = -1; // Reset current index
+                highlightOption(0);
+            } else {
+                userMentionDropdown.style.display = 'none';
+            }
+        }
+    } else {
+        userMentionDropdown.style.display = 'none'; // Hide dropdown if no "@" found
+    }
+}
+// Function to highlight an option
+function highlightOption(index) {
+    const options = userMentionDropdown.querySelectorAll('.mention-option');
+    options.forEach(option => option.classList.remove('mention-highlight'));
+    if (index >= 0 && index < options.length) {
+        options[index].classList.add('mention-highlight');
+    }
+}
+
+// Function to select user from the dropdown
+function selectUser(userId, userNick) {
+    const message = userInput.value;
+    const position = userInput.selectionStart;
+    const newMessage = message.slice(0, position - message.length) + `@${userNick} ` + message.slice(position);
+    userInput.value = newMessage;
+    userMentionDropdown.style.display = 'none'; // Hide dropdown after selection
+    userInput.focus(); // Refocus on the input
+}
+
+function extractUserIds(message) {
+    const userIds = [];
+    const regex = /@(\w+)/g;
+    let match;
+    while ((match = regex.exec(message)) !== null) {
+        const userId = getUserIdFromNick(match[1]);
+        if (userId) {
+            userIds.push(userId);
+        }
+    }
+    return userIds;
+}
+
 async function handleUserKeydown(event) {
+    
     if (userInput.value !== '') {
         if (typingTimeout) {
             clearTimeout(typingTimeout);
@@ -1007,7 +1087,9 @@ async function handleUserKeydown(event) {
         userInput.dispatchEvent(new Event('input'));
     } else if (event.key === 'Enter' && !event.shiftKey) {
         event.preventDefault(); 
-        await sendMessage(userInput.value.trim());
+        const message = userInput.value;
+        const userIdsInMessage = extractUserIds(message);
+        await sendMessage(message,userIdsInMessage );
         adjustHeight();
     }
     if(isParty && isDomLoaded) {
@@ -1316,8 +1398,42 @@ document.addEventListener('DOMContentLoaded', function () {
     createScrollButton();
     
     chatContainer.addEventListener('scroll', handleScroll);
+
     userInput.addEventListener('input', adjustHeight);
     userInput.addEventListener('keydown', handleUserKeydown);
+
+    userInput.addEventListener('input', (event) => {
+        updateUserMentionDropdown(event.target.value);
+    });
+
+    userInput.addEventListener('keydown', (event) => {
+        const options = userMentionDropdown.querySelectorAll('.mention-option');
+        if (event.key === 'ArrowDown') {
+            currentIndex = (currentIndex + 1) % options.length;
+            highlightOption(currentIndex);
+            event.preventDefault(); // Prevent cursor moving
+        } else if (event.key === 'ArrowUp') {
+            currentIndex = (currentIndex - 1 + options.length) % options.length;
+            highlightOption(currentIndex);
+            event.preventDefault(); // Prevent cursor moving
+        } else if (event.key === 'Enter') {
+            if (currentIndex >= 0 && currentIndex < options.length) {
+                const selectedUserId = options[currentIndex].dataset.userid;
+                const selectedUserNick = options[currentIndex].textContent;
+                selectUser(selectedUserId, selectedUserNick);
+            }
+        } else if (event.key === 'Escape') {
+            userMentionDropdown.style.display = 'none'; // Close dropdown
+        }
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!userMentionDropdown.contains(event.target) && event.target !== userInput) {
+            userMentionDropdown.style.display = 'none';
+        }
+    });
+
+
     closeReplyMenu();
     adjustHeight();
 
@@ -2108,6 +2224,7 @@ function scrollToMessage(messageToScroll) {
     scrollToElement(chatContainer,messageToScroll);
     messageToScroll.style.transition = 'background-color 0.5s ease-in-out;';
     setTimeout(() => {
+        scrollToElement(chatContainer,messageToScroll);
         messageToScroll.classList.remove('blink');
         messageToScroll.classList.add('blink');
         setTimeout(() => {
@@ -2738,7 +2855,7 @@ function createAudioElement(audioURL) {
     return audioElement;
 }
 
-async function sendMessage(value) {
+async function sendMessage(value, user_ids) {
     if (value == '') { return }
     if(isOnDm && currentDmId && !isFriend(currentDmId) && !hasSharedGuild(currentDmId)) {
         displayCannotSendMessage(value);
@@ -2746,6 +2863,7 @@ async function sendMessage(value) {
     }
     let data = {
         'content': value,
+        'user_ids': user_ids,
         'channel_id': isOnDm ? currentDmId : currentChannelId,
         'reply_to_id': currentReplyingTo,
         'is_dm' : isOnDm
@@ -3260,9 +3378,17 @@ function blockUser(user_id) {
 function reportUser(user_id) {
     console.log(user_id);
 }
-function mentionUser(user_id) {
 
-}   
+
+
+function mentionUser(user_id) {
+    const usernick = getUserNick(user_id);
+    userInput.value += `@${usernick}`; 
+}
+
+
+
+
 function removeDm(user_id) {
 
 

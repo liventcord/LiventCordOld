@@ -19,7 +19,7 @@ function reloadCSS() {
     }
 }
 
-//window.addEventListener('focus', reloadCSS);
+window.addEventListener('focus', reloadCSS);
 
 let isUnread = false;
 let wasNotChangingUrl = false;
@@ -431,19 +431,7 @@ function triggerguildImageUpdate() {
     getId('guildImage').click();
 }
 
-function reconstructSettings(_isGuildSettings) { //
-    const leftBar = getId('settings-leftbar');
-    leftBar.innerHTML = '';
-    isGuildSettings = _isGuildSettings ;
-    if(_isGuildSettings) {
-        leftBar.innerHTML = getGuildSettingsHTML();
-        selectSettingCategory( Overview );
 
-    } else{ 
-        leftBar.innerHTML = getSettingsHtml();
-    }
-
-}
 function keydownHandler(event) {
     if (event.key === 'Escape') {
         event.preventDefault();
@@ -459,23 +447,10 @@ function keydownHandler(event) {
 
 document.addEventListener('keydown', keydownHandler);
 
-function openSettings(isNotLoadingDefault=false) {
-    if(!isNotLoadingDefault) {
-        reconstructSettings(false);
-    }
-    disableSnowOnSettingsOpen();
-    selectSettingCategory(MyAccount); 
 
-    
-
-    getId('settings-overlay').style.display = 'flex';
-
-    getId('settings-menu').style.animation = 'settings-menu-appear-animation 0.3s forwards';
-    isSettingsOpen = true;
-    
-
-};
-
+function isProfilePopOpen() {
+    return Boolean(getId('profilePopContainer'))    
+}
 
 document.body.addEventListener('click', function(event) {
     if (gifMenu && !gifMenu.contains(event.target) && event.target.id !== 'gifbtn') {
@@ -486,7 +461,11 @@ function createProfileContext(userData) {
     const user_id = userData.user_id;
     let context = {};
 
-    context[VoiceActionType.OPEN_PROFILE] = { action: () => drawProfilePop(userData) };
+
+    if(!isProfilePopOpen()) {
+        context[VoiceActionType.OPEN_PROFILE] = { action: () => drawProfilePop(userData) };
+    }
+
 
     if (user_id !== currentUserId) {
         const guildSubOptions = getManageableGuilds();
@@ -663,6 +642,7 @@ document.addEventListener('DOMContentLoaded', async function () {
     addContextListeners();
     const val = loadBooleanCookie('isParty');
     isParty = val;
+
     initializeMp3Yt();
     if (isParty && isAudioPlaying) {
         enableBorderMovement();
@@ -2364,6 +2344,7 @@ function joinVoiceChannel(channel_id) {
 }
 
 function closeCurrentCall() {
+    currentAudioPlayer = getId('audio-player');
     playAudio('/static/sounds/leavevoice.mp3');
 
     const sp = getId('sound-panel');

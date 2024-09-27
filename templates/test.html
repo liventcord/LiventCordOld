@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Thumbnail Example</title>
+</head>
+<body>
+
+<script>
+function extractId(url) {
+    const regex = /[?&]v=([^&#]+)/;
+    const match = url.match(regex);
+    return match ? match[1] : null;
+}
+
+var videoUrl = 'http://www.youtube.com/watch?v=y2XArpEcygc';
+var videoId = extractId(videoUrl);
+
+if (videoId) {
+    const path = `http://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
+    
+    const imageElement = document.createElement('img');
+    imageElement.src = path;
+    document.body.appendChild(imageElement);
+} else {
+    console.error('Video ID could not be extracted.');
+}
+</script>
+
+</body>
+</html>

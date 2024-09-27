@@ -105,6 +105,10 @@ function createDmContainer(user) {
     return dmContainer;
 }
 
+
+
+
+
 function appendToDmList(user) {
     if (existingUsersIds.has(user.user_id)) {return; }
 
@@ -482,10 +486,6 @@ function updateFriendsList(data,isPending) {
         return;
     }
 
-
-
-    console.log(data);
-    
     populateFriendsContainer(users,isPending);
 
 

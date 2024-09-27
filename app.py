@@ -10,7 +10,7 @@ from pytz import utc as UTC
 from werkzeug.utils import secure_filename
 from sqlite3 import IntegrityError
 from io import BytesIO
-import os,json,signal,wave,time
+import os,json,signal,wave,time,requests
 from limiter import Limiter
 if is_using_pg:
     from db_classes.db_handler import postgres_manager
@@ -125,6 +125,12 @@ def get_common_data(email,user_id):
 def download_page():
     path = os.path.join(project_path, "templates", "download.html")
     return send_file(path)
+@app.route('/test', methods=['GET'])
+def test_page():
+    path = os.path.join(project_path, "templates", "test.html")
+    return send_file(path)
+
+
 
 @app.route('/', methods=['GET', 'POST'])
 def main_page():
@@ -231,7 +237,24 @@ def get_app_page(friend_id=None,guild_id=None, channel_id=None,guild_name=None,a
 
 
 
+@socketio.on('get_ytmp3')
+def ytmp3(data):
+    url = data.get('url')
+    if not url: return 
 
+    body = f'{{"url":"{url}","isAudioOnly":true,"filenamePattern":"pretty"}}'
+
+    apiurl = 'https://cnvmp3.com/fetch.php'
+
+    try:
+        response = requests.post(apiurl, data=body, headers={'Content-Type': 'application/json'})  # Sending POST request with JSON body
+        response.raise_for_status()
+        output = response.json()
+        emit('mp3yt_response', {'url': output.get('url')})  # Assuming output contains 'url'
+
+    except requests.RequestException as e:
+        print(f"Request failed: {e}")
+        emit('mp3yt_response', {'error': 'Request failed.'})  # Emit error back to client
 
 
 
@@ -1152,7 +1175,6 @@ def get_current_invite_id(data):
 
     invite_ids = guild_manager.get_invite_ids(guild_id)
     
-    
     emit('current_invite_ids_response',{'invite_ids' : invite_ids,'guild_id' : guild_id},broadcast=False)
 
 
@@ -1171,20 +1193,16 @@ def add_user_dm(data):
 @socketio.on('get_history')
 def get_history(data):
     user_id = get_user_id()
-    if not user_id:
-        return 
+    if not user_id: return 
 
     channel_id = str(data.get('channel_id'))
     guild_id = str(data.get('guild_id'))
     is_dm = bool(data.get('is_dm'))
     
-    if not channel_id:
-        return 
+    if not channel_id: return 
     if not is_dm:
-        if not guild_id:
-            return
-        if not guild_manager.check_users_guild(guild_id, user_id):
-            return 
+        if not guild_id: return
+        if not guild_manager.check_users_guild(guild_id, user_id): return 
 
     if is_dm:
         history = direct_messages_manager.get_messages_between_users(user_id, channel_id)
@@ -1195,8 +1213,21 @@ def get_history(data):
         history = [Message(data) for data in raw_history]  # Convert dictionaries to Message instances
         oldest_message_date = messages_manager.db_get_oldest_message_date(channel_id)
 
-    # Convert datetime objects to ISO strings
-    history = [msg.to_dict() for msg in history]
+    # Convert Message instances to dictionaries, ensuring datetime serialization
+    def serialize_message(msg):
+        if hasattr(msg, 'to_dict'):
+            msg_dict = msg.to_dict()
+            # Convert any datetime fields in msg_dict to ISO format
+            for key, value in msg_dict.items():
+                if isinstance(value, datetime):
+                    msg_dict[key] = value.isoformat()
+            return msg_dict
+        else:
+            return msg
+    
+    history = [serialize_message(msg) for msg in history]
+
+    # Convert oldest_message_date to ISO format if it's a datetime object
     oldest_message_date = oldest_message_date.isoformat() if isinstance(oldest_message_date, datetime) else oldest_message_date
 
     emit('history_data_response', {
@@ -1205,7 +1236,6 @@ def get_history(data):
         'channel_id': channel_id,
         'oldest_message_date': oldest_message_date
     }, broadcast=False)
-
 @socketio.on('get_old_messages')
 @limit(30)
 def get_old_messages(data):
@@ -1299,6 +1329,14 @@ def handle_message_new(data):
         if not user_id: return
         if not all(key in data for key in ['content', 'channel_id']): return
         is_dm = bool(data.get('is_dm'))
+
+        content = data['content']
+        attachment_urls = data.get('attachment_urls', [])
+        
+        if not (isinstance(content, str) and content.strip()) and not attachment_urls:
+            return
+
+
         channel_id = data['channel_id']
         if not channel_id.isdigit(): return
         guild_id = data.get('guild_id') if not is_dm else None

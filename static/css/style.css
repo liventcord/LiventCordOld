@@ -1605,7 +1605,6 @@ textarea::-webkit-scrollbar-track {
 #userMentionDropdown {
     border: 1px solid #3c3e42;
     display: none; /* Hidden by default */
-    position: absolute; /* Position relative to the nearest positioned ancestor */
     background: #2b2d31;
     max-height: 150px; /* Maximum height for the dropdown */
     width: calc(100vw - 585px); /* Full width minus specific pixels */

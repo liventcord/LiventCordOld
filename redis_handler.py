@@ -2,7 +2,10 @@ import redis,json,subprocess,time
 from datetime import datetime
 class RedisManager():
     def __init__(self):
-        self.r = redis.StrictRedis(host='localhost', port=6379, db=0)
+        self.port = 6379
+        self.host = 'localhost'
+        self.db = 0
+        self.r = redis.StrictRedis(host=self.host, port=self.port, db=self.db)
 
     
 
@@ -211,12 +214,12 @@ class RedisManager():
         
         return json.dumps(channels_list) if channels_list else []
 
-    def clear_redis_cache(self,redis_host='localhost', redis_port=6379, redis_db=0):
+    def clear_redis_cache(self):
         """
         Connect to Redis and clear the cache.
         """
         try:
-            self.r = redis.StrictRedis(host=redis_host, port=redis_port, db=redis_db)
+            self.r = redis.StrictRedis(host=self.host, port=self.port, db=self.db)
             self.r.flushdb()
             
             print("Cleared redis cache!")

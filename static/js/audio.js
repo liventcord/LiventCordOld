@@ -2,6 +2,18 @@
 let audioContext = new (window.AudioContext || window.webkitAudioContext)();
 const bufferSize = 4096;
 
+
+
+
+
+document.addEventListener('DOMContentLoaded', function () {
+    microphoneButton = getId("microphone-button");
+    earphoneButton = getId("earphone-button");
+
+    initializeMp3Yt();
+
+});
+
 socket.on('incoming_audio', async data => {
 
     if (data && data.byteLength > 0) {
@@ -51,21 +63,19 @@ function playAudioBuffer(audioBuffer) {
     source.start(0);
 }
 
-function joinToGuild(invite_id) {
-    socket.emit('join_to_guild',{'invite_id':invite_id});
-}
+
 
 
 let currentAudioPlayer;
 let isAudioPlaying = false; 
-let analyser = null; // Track the AnalyserNode
-let source = null; // Track the MediaElementSourceNode
-let isAnalyzing = false; // Track if audio analysis is ongoing
+let analyser = null; 
+let source = null; 
+let isAnalyzing = false; 
 
 function enableBorderMovement() {
     if (isAudioPlaying && currentAudioPlayer) {
         if (!isAnalyzing) {
-            startAudioAnalysis(); // Start audio analysis if not already running
+            startAudioAnalysis(); 
         }
     }
 }
@@ -97,7 +107,6 @@ function stopAudioAnalysis() {
 function startAudioAnalysis() {
     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-    // Check if `currentAudioPlayer` is a valid HTMLMediaElement
     if (!(currentAudioPlayer instanceof HTMLMediaElement)) {
         console.error('currentAudioPlayer is not a valid HTMLMediaElement.');
         return;
@@ -115,7 +124,7 @@ function startAudioAnalysis() {
     const bufferSize = 10; // Number of samples to keep for average calculation
 
     function analyzeAudio() {
-        if (!isAnalyzing) return; // Exit if analysis is stopped
+        if (!isAnalyzing) return; 
     
         const profileDisplayElement = document.getElementById('profile-display');
         const selfProfileDisplayElement = document.getElementById('self-profile-image');
@@ -243,56 +252,42 @@ function resetProfileBorders() {
 }
 
 
-
-async function playAudio(audioUrl, isYtMp3) {
+let currentPlayer; 
+async function playAudio(audioUrl) {
     try {
-        if(!currentAudioPlayer) {
-            currentAudioPlayer = getId('audio-player');
+        // Stop and remove the current player if it's playing
+        if (currentPlayer) {
+            currentPlayer.pause(); // Pause any currently playing audio
+            currentPlayer.remove(); // Remove the player element
         }
-        if (!isYtMp3) {
-            const response = await fetch(audioUrl);
-            if (!response.ok) {
-                throw new Error(`Failed to fetch audio: ${response.statusText}`);
-            }
-            const reader = response.body.getReader();
-            const stream = new ReadableStream({
-                start(controller) {
-                    function push() {
-                        reader.read().then(({ done, value }) => {
-                            if (done) {
-                                controller.close();
-                                return;
-                            }
-                            controller.enqueue(value);
-                            push();
-                        });
+
+        // Create a new audio element
+        const audioElement = document.createElement('audio');
+        audioElement.id = 'audio-player';
+        audioElement.src = audioUrl; // Set the source directly
+        document.body.appendChild(audioElement); // Append to the body (or any container)
+
+        // Initialize the MediaElement player
+        currentPlayer = new MediaElementPlayer(audioElement, {
+            success: function(mediaElement, originalElement) {
+                mediaElement.play(); // Play the audio
+                isAudioPlaying = true;
+
+                // Setup event listeners
+                mediaElement.addEventListener('play', function() {
+                    if (isParty) {
+                        enableBorderMovement(); // Trigger your visual effects
                     }
-                    push();
-                }
-            });
-            const audioBlob = await new Response(stream).blob();
-            const audioUrlBlob = URL.createObjectURL(audioBlob); // Generate Blob URL
+                });
 
-            // Set the Blob URL as the source for the <audio> element
-            currentAudioPlayer.src = audioUrlBlob;
-        } else {
-            currentAudioPlayer.src = audioUrl; // Set audio URL directly for YouTube MP3 links
-        }
-
-
-
-        currentAudioPlayer.onplay = function () {
-            if (isParty) {
-                enableBorderMovement(); // Trigger your visual effects
-            }
-        };
-
-        currentAudioPlayer.onended = function () {
-            stopCurrentMusic(); // Handle when audio stops
-        };
-
-        await currentAudioPlayer.play(); // Play the audio
-        isAudioPlaying = true;
+                mediaElement.addEventListener('ended', function() {
+                    stopCurrentMusic(); // Handle when audio stops
+                });
+            },
+            error: function() {
+                console.error("Error initializing MediaElement.js player");
+            },
+        });
 
     } catch (error) {
         console.error("Error playing audio:", error);
@@ -395,31 +390,262 @@ function initializeMp3Yt() {
 
 
 
-function resetWiggleEffect(...elements) {
-    elements.forEach(element => {
-        if (element) {
-            element.style.transition = 'none';
-            element.style.borderRadius = '0%'; 
-            setTimeout(() => {
-                element.style.transition = 'border-radius 0.1s'; 
-            }, 0);
+
+
+
+function activateSoundOutput() {
+    // Function to request sound output device permissions
+    async function requestSoundOutputPermissions() {
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
+            return true; // Permission granted
+        } catch (error) {
+            return false; // Permission denied or error occurred
         }
-    });
+    }
+
+    function getSoundOutputList() {
+        return navigator.mediaDevices.enumerateDevices()
+            .then(devices => devices.filter(device => device.kind === 'audiooutput'));
+    }
+
+    async function updateSoundOutputOptions() {
+        const dropdown = getId('sound-output-dropdown');
+        dropdown.innerHTML = ''; // Clear existing options
+
+        try {
+            const hasPermission = await requestSoundOutputPermissions();
+
+            if (hasPermission) {
+                const soundOutputs = await getSoundOutputList();
+                soundOutputs.forEach((output, index) => {
+                    const option = createEl('option');
+                    option.style.fontSize = '12px';
+                    option.style.border = 'none';
+                    option.value = output.deviceId;
+                    option.textContent = output.label || `Sound Output ${index + 1}`;
+                    dropdown.appendChild(option);
+                });
+            }
+
+            // Add default sound output option at the end
+            const defaultOption = createEl('option');
+            defaultOption.style.fontSize = '12px';
+            defaultOption.value = 'default';
+            defaultOption.textContent = 'Default Sound Output';
+            dropdown.appendChild(defaultOption);
+
+        } catch (error) {
+            console.error('Error updating sound output options:', error);
+
+            // Ensure the default sound output option is added even if an error occurs
+            const defaultOption = createEl('option');
+            defaultOption.style.fontSize = '12px';
+            defaultOption.value = 'default';
+            defaultOption.textContent = 'Default Sound Output';
+            dropdown.appendChild(defaultOption);
+        }
+    }
+
+    updateSoundOutputOptions();
+    navigator.mediaDevices.addEventListener('devicechange', updateSoundOutputOptions);
 }
 
-function applyWiggleEffect(profileElement, selfProfileElement) {
-    if(profileElement) {
-        profileElement.classList.add('dancing-border');
+
+
+  
+
+let isMicrophoneOpen = true;
+function setMicrophone() {
+    let imagePath = isMicrophoneOpen ? `/static/images/icons/whitemic.png` : `/static/images/icons/redmic.png`;
+    microphoneButton.src = imagePath;
+    isMicrophoneOpen = !isMicrophoneOpen;
+    console.log("Set microphone! to " , isMicrophoneOpen);
+}
+
+let isEarphonesOpen = true;
+function setEarphones() {
+    let imagePath = isEarphonesOpen ? `/static/images/icons/whiteearphones.png` : `/static/images/icons/redearphones.png`;
+    earphoneButton.src = imagePath;
+    isEarphonesOpen = !isEarphonesOpen;
+    console.log("Set earphones! to " , isEarphonesOpen);
+}
+
+
+
+async function activateMicAndSoundOutput() {
+    activateMicAndCamera();
+    activateSoundOutput();
+}
+async function sendAudioData() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = async (e) => {
+
+        };
+
+        mediaRecorder.start();
+
+    } catch (err) {
+        console.error('Error accessing microphone:', err);
     }
-    if(selfProfileElement) {
-        selfProfileElement.classList.add('dancing-border');
+}
+
+
+function activateMicAndCamera() {
+    async function requestMediaPermissions() {
+        try {
+            await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+            return true; // Permission granted
+        } catch (error) {
+            return false; // Permission denied or error occurred
+        }
     }
-    setTimeout(() => {
-        if(profileElement) {
-            profileElement.classList.remove('dancing-border');
+
+    function getMediaDevicesList() {
+        return navigator.mediaDevices.enumerateDevices()
+            .then(devices => devices.filter(device => device.kind === 'audioinput' || device.kind === 'videoinput'));
+    }
+    async function updateMediaOptions() {
+        const micDropdown = getId('sound-mic-dropdown');
+        micDropdown.innerHTML = ''; // Clear existing options
+        const cameraDropdown = getId('camera-dropdown');
+        cameraDropdown.innerHTML = ''; // Clear existing options
+        try {
+            const hasPermission = await requestMediaPermissions();
+
+            if (hasPermission) {
+                const mediaDevices = await getMediaDevicesList();
+                mediaDevices.forEach((device, index) => {
+                    const option = createEl('option',{fontSize:'12px',border:'none'});
+
+                    option.value = device.deviceId;
+                    if (device.kind === 'audioinput') {
+                        option.textContent = device.label || `Microphone ${index + 1}`;
+                        micDropdown.appendChild(option);
+                    } else if (device.kind === 'videoinput') {
+                        option.textContent = device.label || `Camera ${index + 1}`;
+                        cameraDropdown.appendChild(option);
+                    }
+                });
+            }
+
+            // Add default microphone and camera options at the end
+            const defaultMicOption = createEl('option',{fontSize:'12px',value:'default'});
+            defaultMicOption.textContent = 'Default Microphone';
+            micDropdown.appendChild(defaultMicOption);
+
+            const defaultCameraOption = createEl('option',{fontSize:'12px',value:'default'});
+            defaultCameraOption.textContent = 'Default Camera';
+            cameraDropdown.appendChild(defaultCameraOption);
+
+        } catch (error) {
+            console.error('Error updating media options:', error);
+
+            // Ensure the default options are added even if an error occurs
+            const defaultMicOption = createEl('option',{fontSize:'12px',value:'default'});
+            defaultMicOption.textContent = 'Default Microphone';
+            micDropdown.appendChild(defaultMicOption);
+
+            const defaultCameraOption = createEl('option',{fontSize:'12px',value:'default'});
+            defaultCameraOption.textContent = 'Default Camera';
+            cameraDropdown.appendChild(defaultCameraOption);
         }
-        if(selfProfileElement) {
-            selfProfileElement.classList.remove('dancing-border');
+    }
+
+    updateMediaOptions();
+    if(navigator && navigator.mediaDevices) {
+        navigator.mediaDevices.addEventListener('devicechange', updateMediaOptions);
+    }
+}
+
+
+
+function closeCurrentCall() {
+    currentAudioPlayer = getId('audio-player');
+    playAudio('/static/sounds/leavevoice.mp3');
+
+    const sp = getId('sound-panel');
+    const oldVoiceId = currentVoiceChannelId;
+    sp.style.display = 'none';
+    clearVoiceChannel(oldVoiceId);
+    currentVoiceChannelId = '';
+    currentVoiceChannelGuild = '';
+    const buttonContainer = channelsUl.querySelector(`li[id="${oldVoiceId}"]`);
+
+    mouseLeaveChannelButton(buttonContainer, false,oldVoiceId);
+    usersInVoice[oldVoiceId] = [];
+
+    const data = {
+        'guild_id' : currentVoiceChannelGuild,
+        'channel_id' : currentVoiceChannelId
+    }
+    socket.emit('leave_voice_channel',data)
+}
+function clearVoiceChannel(channel_id) {
+    const channelButton = channelsUl.querySelector(`li[id="${channel_id}"]`);
+    if(!channelButton) {return; }
+    const buttons = channelButton.querySelectorAll('.channel-button');
+    buttons.forEach((btn,index) => {
+        btn.remove();
+    });
+    let channelUsersContainer = channelButton.querySelector('.channel-users-container');
+    if(channelUsersContainer) {
+        channelUsersContainer.remove();
+    }
+    let existingContentWrapper = channelButton.querySelector('.content-wrapper');
+    console.log(existingContentWrapper.style.marginRight);
+    existingContentWrapper.style.marginRight = '100px';
+}
+
+
+let cachedAudioNotify = null;
+
+function playNotification() {
+    try {
+        if (!cachedAudioNotify) {
+            cachedAudioNotify = new Audio("https://raw.githubusercontent.com/TheLp281/LiventCord/main/notification.mp3");
         }
-    }, 500); 
+        cachedAudioNotify.play();
+    } catch (error) {
+        console.log(error);
+    }
+}
+
+
+function initializeMusic() {
+    const modal = createEl('div', { className: 'modal'});
+    document.body.appendChild(modal);
+
+    const songs = [
+        '/static/sounds/musics/1.mp3',
+        '/static/sounds/musics/2.mp3',
+        '/static/sounds/musics/3.mp3',
+        '/static/sounds/musics/4.mp3'
+    ];
+
+    let currentSongIndex = 0;
+
+    function playCurrentSong() {
+        const currentSong = songs[currentSongIndex];
+        
+        playAudio(currentSong); 
+        
+        const audio = new Audio(currentSong);
+        audio.onended = function () {
+            currentSongIndex++;
+            if (currentSongIndex >= songs.length) {
+                currentSongIndex = 0;
+            }
+
+            playCurrentSong(); 
+        };
+    }
+
+    modal.addEventListener('click', function () {
+        playCurrentSong();
+        modal.style.display = 'none'; 
+    });
 }

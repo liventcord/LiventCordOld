@@ -1,177 +1,51 @@
-function reloadCSS() {
-    const approvedDomains = ['localhost'];
-    function getDomain(url) {
-        const link = createEl('a');
-        link.href = url;
-        return link.hostname;
-    }
-    const links = document.getElementsByTagName('link');
-    for (let i = 0; i < links.length; i++) {
-        const link = links[i];
-        if (link.rel === 'stylesheet') {
-            const href = link.href;
-            const domain = getDomain(href);
-            if (approvedDomains.includes(domain)) {
-                const newHref = href.indexOf('?') !== -1 ? `${href}&_=${new Date().getTime()}` : `${href}?_=${new Date().getTime()}`;
-                link.href = newHref;
-            }
-        }
-    }
-}
-
-window.addEventListener('focus', reloadCSS);
 
 let isUnread = false;
 let wasNotChangingUrl = false;
 let isImagePreviewOpen = false;
 let closeCurrentJoinPop;
+let guildsList;
+let isOnGuild = false;
+
+
+
 const MyAccount = "MyAccount";
 const SoundAndVideo = "SoundAndVideo";
 const Notifications = "Notifications";
 const ActivityPresence = "ActivityPresence";
 const Appearance = "Appearance";
 const socket = io();
-let guildsList;
 let isSettingsOpen = false;
 let isUnsaved = false;
 let isChangedProfile = false;
 let isChangedNick = false;
 let isInitialized = false;
-let isOnGuild = false;
 let shakeForce = 1;
 let resetTimeout; 
 let currentPopUp = null;
 
-let contextMenu = null;
 let microphoneButton = null;
 let earphoneButton;
 let isEmailToggled = false;
-let currentUserId;
-let currentDiscriminator = null;
-let currentUserName;
-let currentChannelId;
-let currentVoiceChannelId;
-let lastConfirmedProfileImg;
-let currentGuildName = '';
-let currentGuildIndex = 0;
+
 let logoClicked = 0;
-let isWarnedMic = false;
 let isGuildSettings = false;
 let currentSettingsType = MyAccount;
-let userNames = {};
-userNames['1'] = {
-    nick: 'Clyde',
-    discriminator: '0000',
-    is_blocked: false
-};
 
-let currentEscHandler;
-let isOnMe = true;
-let isOnDm = false;
 
-let cachedFriMenuContent;
-let userListFriActiveHtml;
-
-let contextList = {};
-let messageContextList = {};
-
-let channels_cache = {}; // <guild_id> <channels_list>
-let guild_users_cache = {}; // <guild_id> <users_list>
-let users_metadata_cache = {}; // <guild_id> 
-
-let usersInVoice = {};
-let readenMessagesCache = {};
-let guildAuthorIds = {};
 
 const userListTitleHTML = `
 <h1 id='nowonline' style="font-weight: bolder;">Şimdi Aktif</h1> <ul> </ul>
 `;
 
 
-
-
 function getId(string) { return document.getElementById(string);}
 const createEl = (tag, options) => Object.assign(document.createElement(tag), options);
 
-const loadingScreen = createEl('div', { id: 'loading-screen' });
-document.body.appendChild(loadingScreen);
-const loadingElement = createEl('img', { id: 'loading-element' });
-loadingScreen.appendChild(loadingElement);
-loadingElement.src = '/static/images/icons/icon.png';
-
-async function urlToBase64(url) {
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        const blob = await response.blob();
-        const reader = new FileReader();
-        return new Promise((resolve, reject) => {
-            reader.onloadend = () => {
-                const base64Data = reader.result.split(',')[1];
-                const mimeType = blob.type || 'image/png';
-                resolve(`data:${mimeType};base64,${base64Data}`);
-            };
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-    } catch (error) {
-        console.error('Error fetching or converting URL to Base64:', error);
-        throw error;
-    }
-}
-urlToBase64(defaultProfileImageUrl)
-    .then(base64 => defaultProfileImageUrl = base64)
-    .catch(error => console.error(error));
-    
-urlToBase64(defaultMediaImageUrl)
-    .then(base64 => defaultMediaImageUrl = base64)
-    .catch(error => console.error(error));
-    
-
-function disableElement(str) {
-    const element = getId(str);
-    if(element) {
-        element.style.display = 'none';
-    }   
-
-}
-function enableElement(str, isFlex1 = false, isBlock = false, isInline = false) {
-    const element = getId(str);
-    if (element) {
-        if (isFlex1) {
-            element.style.flex = '1';
-        }
-        
-        if (isBlock) {
-            element.style.display = 'block';
-        } else if (isInline) {
-            element.style.display = 'inline-block';
-        } else {
-            element.style.display = 'flex';
-        }
-
-        //console.log("Element", str, 'is enabled.');
-    }
-}
 
 
-function toggleEmail() {
-    const eyeIcon = getId('set-info-email-eye');
-    isEmailToggled = !isEmailToggled;
-    getId("set-info-email").textContent = isEmailToggled ? email : masked_email;    
 
-    if (isEmailToggled) {
-        eyeIcon.classList.remove('fa-eye');
-        eyeIcon.classList.add('fa-eye-slash');
-    } else {
-        eyeIcon.classList.remove('fa-eye-slash');
-        eyeIcon.classList.add('fa-eye');
-    }
-    
 
-}
+
 function clearCookies() {
     const cookies = document.cookie.split('; ');
     for (const cookie of cookies) {
@@ -201,720 +75,16 @@ function loadBooleanCookie(name) {
 }
 
 
-function startGuildJoinCreate() {
-    showGuildPop('Sunucunu Oluştur','Sunucun, arkadaşlarınla takıldığınız yerdir. Kendi sunucunu oluştur ve konuşmaya başla.');
 
-}
 
 
-function showGuildPop(subject, content) {
 
-    const newPopParent = createEl('div', { className: 'pop-up', id: 'guild-pop-up' });
-    const newPopOuterParent = createEl('div', { className: 'outer-parent' });
-    const guildPopSubject = createEl('h1', { className: 'guild-pop-up-subject', textContent: subject });
-    const guildPopContent = createEl('p', { className: 'guild-pop-up-content', textContent: content });
-    const guildPopButtonContainer = createEl('div', { className: 'guild-pop-button-container' });
 
-    const popBottomContainer = createEl('div',{className:'popup-bottom-container'});
-    const popOptionButton = createEl('button', { id:'popOptionButton',className: 'guild-pop-up-accept', textContent: 'Kendim Oluşturayım' });
-    const closeCallback = function (event) {
-        closePopUp(newPopOuterParent, newPopParent);
-    }
-    
-    
-    popOptionButton.addEventListener('click', function () { changePopUpToGuildCreation(newPopParent,guildPopButtonContainer,guildPopContent,guildPopSubject,closeCallback); });
 
-    const option2Title = createEl('p', {className:'guild-pop-up-content', id:'guild-popup-option2-title',textContent:'Zaten davetin var mı?' });
-    const popOptionButton2 = createEl('button', { id:'popOptionButton2',className: 'guild-pop-up-accept', textContent: 'Bir Sunucuya Katıl' });
-    popOptionButton2.addEventListener('click', function () { ChangePopUpToGuildJoining(newPopParent,guildPopButtonContainer,guildPopContent,guildPopSubject,closeCallback); });
 
-    popBottomContainer.appendChild(option2Title);
-    popBottomContainer.appendChild(popOptionButton2);
 
-    const closeButton = createEl('button', { className: 'pop-up-accept', className: 'popup-close', textContent: 'X' });
-    closeButton.addEventListener('click', function () { closePopUp(newPopOuterParent, newPopParent); });
 
-    newPopParent.appendChild(guildPopSubject);
-    newPopParent.appendChild(guildPopContent);
-    guildPopButtonContainer.appendChild(popOptionButton);
-    guildPopButtonContainer.appendChild(popBottomContainer);
-    newPopParent.appendChild(guildPopButtonContainer);
-    newPopParent.appendChild(closeButton);
 
-    newPopOuterParent.appendChild(newPopParent);
-    newPopOuterParent.style.display = 'flex';
-
-    newPopOuterParent.addEventListener('click',function() {
-        if (event.target === newPopOuterParent) {
-            closeCallback();
-        }
-    });
-
-    document.body.appendChild(newPopOuterParent);
-
-}
-function clickToCreateGuildBackButton() {
-    closePopUp(newPopOuterParent, newPopParent);
-}
-function clickToJoinGuildBackButton(event,closeCallback) {
-    closeCallback(event);
-    startGuildJoinCreate();
-}
-
-function changePopUpToGuildCreation(newPopParent, popButtonContainer, newPopContent, newPopSubject,closeCallback) {
-
-    if (popButtonContainer && popButtonContainer.parentNode) {
-        popButtonContainer.parentNode.removeChild(popButtonContainer);
-    }
-    newPopSubject.textContent = 'Sunucunu Özelleştir';
-    newPopContent.textContent = 'Yeni sunucuna bir isim ve simge ekleyerek ona kişilik kat. Bunları istediğin zaman değiştirebilirsin.';
-
-    const text = currentUserName + ' Kullanıcısının sunucusu';
-    const newInput = createEl('input', { value: text, id: 'guild-name-input' });
-    const createButton = createEl('button', { textContent: 'Oluştur', className: 'create-guild-verify common-button' });
-    const backButton = createEl('button', { textContent: 'Geri', className: 'create-guild-back common-button' });
-
-    backButton.addEventListener('click', function(event) {
-        clickToJoinGuildBackButton(event, closeCallback);
-    });
-    const guildNameTitle = createEl('h1', { textContent: 'SUNUCU ADI', className: 'create-guild-title' });
-
-    const guildImageForm = createEl('div', { id: 'guildImageForm', accept: 'image/*' });
-    const guildImageInput = createEl('input', { type: 'file', id: 'guildImageInput', accept: 'image/*', style: 'display: none;' });
-
-    const guildImage = createEl('div', { id: 'guildImg', className: 'fas fa-camera' });
-    const uploadText = createEl('p', { id: 'uploadText', textContent: 'UPLOAD' });
-    const clearButton = createEl('button', { id: 'clearButton', textContent: 'X', style: 'display: none;' });
-    guildImage.appendChild(uploadText);
-    guildImage.appendChild(clearButton);
-    function triggerGuildInput() {
-        guildImageInput.click();
-    }
-    function handleImageUpload(event) {
-        console.log(event);
-        const file = event.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                guildImage.style.backgroundImage = `url(${e.target.result})`;
-                guildImage.style.backgroundSize = 'cover';
-                guildImage.style.backgroundPosition = 'center';
-                uploadText.style.display = 'none'; 
-                clearButton.style.display = 'flex'; 
-                guildImage.className = "guildImage";
-                
-            };
-            reader.readAsDataURL(file);
-        }
-    }
-
-    guildImage.addEventListener('click', triggerGuildInput);
-    createButton.addEventListener('click', createGuild);
-
-    guildImageInput.addEventListener('change', handleImageUpload);
-    clearButton.addEventListener('click', clearImage);
-
-    function clearImage(event) {
-        event.stopPropagation(); 
-        guildImage.style.backgroundImage = '';
-        uploadText.style.display = 'block'; 
-        clearButton.style.display = 'none'; 
-        guildImageInput.value = ''; 
-    }
-
-    guildImageForm.appendChild(guildImageInput);
-    guildImageForm.appendChild(guildImage);
-
-    newPopParent.style.animation='guild-pop-up-create-guild-animation 0.3s forwards';
-    newPopParent.appendChild(guildImageForm);
-    newPopParent.appendChild(guildNameTitle);
-    newPopParent.appendChild(newInput);
-    newPopParent.appendChild(createButton);
-    newPopParent.appendChild(backButtn);
-}
-function ChangePopUpToGuildJoining(newPopParent, popButtonContainer, newPopContent, newPopSubject,closeCallback) {
-
-    if (popButtonContainer) {
-        popButtonContainer.remove();
-    }
-
-    newPopSubject.textContent = 'Bir Sunucuya Katıl';
-    newPopContent.textContent = 'Var olan bir sunucuya katılmak için aşağıya bir davet gir.';
-    const text = `${window.location.protocol}//${window.location.hostname}/hTKzmak`;
-    const newInput = createEl('input', { placeholder: text, id: 'guild-name-input' });
-
-    const joinButton = createEl('button', { textContent: 'Sunucuya Katıl', className: 'create-guild-verify common-button' });
-    joinButton.style.fontSize = '14px';
-    joinButton.style.whiteSpace = 'nowrap';
-    joinButton.style.padding = '0px';
-    joinButton.style.width = '120px';
-
-
-
-
-
-    joinButton.addEventListener('click',function() {
-        if(newInput.value == '') {
-            guildNameTitle.textContent = 'DAVET BAĞLANTISI - Lütfen geçerli bir davet bağlantısı veya davet kodu gir.';
-            guildNameTitle.textAlign = 'left';
-            guildNameTitle.style.color = 'red';
-            return;
-        } 
-        joinToGuild(newInput.value);
-        closeCurrentJoinPop = closeCallback;
-    });
-
-    const backButton = createEl('button', { textContent: 'Geri', className: 'create-guild-back common-button' });
-    backButton.addEventListener('click', function(event) {
-        clickToJoinGuildBackButton(event, closeCallback);
-    });
-    const guildNameTitle = createEl('h1', { textContent: 'DAVET BAĞLANTISI', className: 'create-guild-title',id:'create-guild-title' });
-    guildNameTitle.style.top = '25%';
-    const guildNameDescription = createEl('h1', { textContent: 'DAVETLER ŞÖYLE GÖRÜNÜR', className: 'create-guild-title' });
-    const descriptionText = `
-    hTKzmak<br>
-    ${window.location.protocol}//${window.location.hostname}/hTKzmak<br>
-    ${window.location.protocol}//${window.location.hostname}/cool-people
-    `;
-    const guildNameDescriptionContent = createEl('h1', { innerHTML: descriptionText, className: 'create-guild-title' });
-    guildNameDescriptionContent.style.width = '55%';
-    guildNameDescriptionContent.style.textAlign = 'left'; 
-    
-    
-
-
-    guildNameDescriptionContent.style.color = 'white';
-    guildNameDescriptionContent.style.top = '60%';
-    guildNameDescription.style.top = '55%';
-    newInput.style.bottom = '50%';
-
-
-    const guildImage = createEl('div', { id: 'guildImg', className: 'fas fa-camera' });
-    const uploadText = createEl('p', { id: 'uploadText', textContent: 'UPLOAD' });
-    const clearButton = createEl('button', { id: 'clearButton', textContent: 'X', style: 'display: none;' });
-    guildImage.appendChild(uploadText);
-    guildImage.appendChild(clearButton);
-
-    const popBottomContainer = createEl('div',{className:'popup-bottom-container'});
-
-    const guildPopButtonContainer = createEl('div', { className: 'guild-pop-button-container' });
-    guildPopButtonContainer.appendChild(popBottomContainer);
-    newPopParent.appendChild(guildPopButtonContainer);
-
-    newPopParent.style.animation = 'guild-pop-up-join-guild-animation 0.3s forwards';
-
-    newPopParent.appendChild(guildNameTitle);
-    newPopParent.appendChild(guildNameDescription);
-    newPopParent.appendChild(guildNameDescriptionContent);
-    newPopParent.appendChild(newInput);
-    newPopParent.appendChild(joinButton);
-    newPopParent.appendChild(backButton);
-}
-
-
-function closePopUp(outerParent, popParent) {
-
-    popParent.style.animation = 'pop-up-shrink-animation 0.2s forwards';
-    popParent.style.overflow = 'hidden'; 
-
-    setTimeout(() => {
-        outerParent.remove();
-    }, 200);
-}
-
-
-
-function triggerFileInput() {
-    getId('profileImage').click();
-}
-function triggerguildImageUpdate() {
-    getId('guildImage').click();
-}
-
-
-function keydownHandler(event) {
-    if (event.key === 'Escape') {
-        event.preventDefault();
-        if (isSettingsOpen) {
-            closeSettings();
-            return;
-        }
-        if (isImagePreviewOpen) {
-            hideImagePreviewRequest();
-        }
-    }
-}
-
-document.addEventListener('keydown', keydownHandler);
-
-
-function isProfilePopOpen() {
-    return Boolean(getId('profilePopContainer'))    
-}
-
-document.body.addEventListener('click', function(event) {
-    if (gifMenu && !gifMenu.contains(event.target) && event.target.id !== 'gifbtn') {
-        closeGifs();
-    }
-});
-function createProfileContext(userData) {
-    const user_id = userData.user_id;
-    let context = {};
-
-
-    if(!isProfilePopOpen()) {
-        context[VoiceActionType.OPEN_PROFILE] = { action: () => drawProfilePop(userData) };
-    }
-
-
-    if (user_id !== currentUserId) {
-        const guildSubOptions = getManageableGuilds();
-        if (Array.isArray(guildSubOptions) && guildSubOptions.length > 0) {
-            context[ActionType.INVITE_TO_GUILD] = {
-                action: () => {},
-                subOptions: guildSubOptions.map(subOption => ({
-                    label: getGuildName(subOption),
-                    action: () => inviteUser(user_id, subOption)
-                }))
-            };
-        }
-    }
-
-    if (!isOnMe) {
-        context[ActionType.MENTION_USER] = {
-            action: () => mentionUser(user_id)
-        };
-    }
-
-    if (user_id == currentUserId) {
-        context[ActionType.EDIT_GUILD_PROFILE] = {
-            action: () => editGuildProfile()
-        };
-    } else {
-        context[ActionType.BLOCK_USER] = {
-            action: () => blockUser(user_id)
-        };
-        context[ActionType.REPORT_USER] = {
-            action: () => reportUser(user_id)
-        };
-    }
-
-    if (isFriend(user_id)) {
-        context[ActionType.REMOVE_USER] = {
-            action: () => removeFriend(user_id)
-        };
-    }
-
-    if (isDeveloperMode) {
-        context[ActionType.COPY_USER_ID] = {
-            action: () => copyId(user_id)
-        };
-    }
-
-    return context;
-}
-
-
-
-function addContextListeners() {
-    document.addEventListener('contextmenu', function (event) {
-        event.preventDefault();
-
-        let options = null;
-
-        if (event.target.id && contextList.hasOwnProperty(event.target.id)) {
-            options = contextList[event.target.id];
-        } else if (event.target.dataset.m_id && messageContextList.hasOwnProperty(event.target.dataset.m_id)) {
-            options = messageContextList[event.target.dataset.m_id];
-        } else if (event.target.dataset.cid && contextList.hasOwnProperty(event.target.dataset.cid)) {
-            options = contextList[event.target.dataset.cid];
-        }
-
-        if (options) {
-            showContextMenu(event.pageX, event.pageY, options);
-        }
-    });
-
-    document.addEventListener('click', function (event) {
-        if (event.target.dataset.m_id && messageContextList.hasOwnProperty(event.target.dataset.m_id)) {
-            const options = messageContextList[event.target.dataset.m_id];
-            if (options) {
-                hideContextMenu();
-                showContextMenu(event.pageX, event.pageY, options);
-            }
-        }
-
-        if (event.target.classList && !event.target.classList.contains('message') && event.target.id && messageContextList.hasOwnProperty(event.target.id)) {
-            const options = messageContextList[event.target.id];
-            if (options) {
-                hideContextMenu();
-                showContextMenu(event.pageX, event.pageY, options);
-            }
-        }
-    });
-}
-
-function createChannelsContext(channel_id) {
-    let context = {};
-    context[ChannelsActionType.MARK_AS_READ] = { action: () => readCurrentMessages() };
-    context[ChannelsActionType.COPY_LINK] = { action: () => copyChannelLink(currentGuildId, channel_id) };
-    context[ChannelsActionType.MUTE_CHANNEL] = { action: () => muteChannel(channel_id) };
-    context[ChannelsActionType.NOTIFY_SETTINGS] = { action: () => showNotifyMenu(channel_id) };
-
-    if (isSelfAuthor()) {
-        context[ChannelsActionType.EDIT_CHANNEL] = { action: () => editChannel(channel_id) };
-        context[ChannelsActionType.DELETE_CHANNEL] = { action: () => deleteChannel(channel_id, currentGuildId) };
-    }
-
-    if (isDeveloperMode) {
-        context[ActionType.COPY_ID] = { action: () => copyId(channel_id) };
-    }
-
-    return context;
-}
-
-function createMessageContext(message_id, user_id) {
-    let context = {};
-
-    context[MessagesActionType.ADD_REACTION] = { action: () => openReactionMenu(message_id) };
-
-    if (user_id === currentUserId) {
-        context[MessagesActionType.EDIT_MESSAGE] = { action: () => openEditMessage(message_id) };
-    }
-
-    if (isSelfAuthor() || (isOnDm && user_id === currentUserId)) {
-        context[MessagesActionType.PIN_MESSAGE] = { action: () => pinMessage(message_id) };
-    }
-
-    context[MessagesActionType.REPLY] = { action: () => showReplyMenu(message_id, user_id) };
-    context[MessagesActionType.MARK_AS_UNREAD] = { action: () => markAsUnread(message_id) };
-
-    if (isSelfAuthor() || (isOnDm && user_id === currentUserId)) {
-        context[MessagesActionType.DELETE_MESSAGE] = { action: () => deleteMessage(message_id) };
-    }
-
-    if (isDeveloperMode) {
-        context[ActionType.COPY_ID] = { action: () => copyId(message_id) };
-    }
-
-    return context;
-}
-
-
-document.addEventListener('DOMContentLoaded', async function () {
-    
-    isDomLoaded = true;
-    currentUserId = passed_user_id;
-    currentUserName = user_name;
-    currentDiscriminator = user_discriminator;
-    
-    getId('tb-showprofile').addEventListener('click', toggleUsersList);
-    selectSettingCategory(MyAccount);
-    selfProfileImage = getId("self-profile-image");
-
-    selfProfileImage.addEventListener("mouseover", function() { this.style.borderRadius = '0px'; });
-    selfProfileImage.addEventListener("mouseout", function() { this.style.borderRadius = '50%'; });
-
-    microphoneButton = getId("microphone-button");
-    earphoneButton = getId("earphone-button");
-    selfBubble = getId("self-bubble");
-    await updateSelfProfile(passed_user_id,user_name);
-    microphoneButton.src =  "/static/images/icons/redmic.png";
-    earphoneButton.src = "/static/images/icons/redearphones.png";
-    initialiseMe();
-    if (window.location.pathname.startsWith('/channels/@me/')) {
-        const parts = window.location.pathname.split('/');
-        const friendId = parts[3];
-        OpenDm(friendId);
-        
-    } else  if (typeof passed_guild_id !== 'undefined' && typeof passed_channel_id !== 'undefined' && typeof passed_author_id !== 'undefined') {
-        loadGuild(passed_guild_id,passed_channel_id,passed_guild_name,passed_author_id);
-    }
-    if (typeof passed_message_readen !== 'undefined') {
-        readenMessagesCache = passed_message_readen;
-    }
-    if (typeof friends_status === 'object' && friends_status !== null) {
-        friends_cache = friends_status;
-    } 
-    if(typeof passed_friend_id !== 'undefined') {
-        addUser(passed_friend_id,passed_friend_name,passed_friend_discriminator,passed_friend_blocked)
-    }
-    addContextListeners();
-    const val = loadBooleanCookie('isParty');
-    isParty = val;
-
-    initializeMp3Yt();
-    if (isParty && isAudioPlaying) {
-        enableBorderMovement();
-    }
-    
-    getId("variableScript").remove();
-
-
-
-});
-function createMenuItem(label, itemOptions) {
-    const li = createEl('li', { textContent: label });
-    li.addEventListener('click', function(event) {
-        event.stopPropagation();
-        hideContextMenu();
-        if (itemOptions.action) {
-            itemOptions.action();
-        }
-    });
-
-    if (itemOptions.subOptions) {
-        const subUl = createEl('ul');
-        itemOptions.subOptions.forEach(subOption => {
-            const subLi = createMenuItem(subOption.label, { action: subOption.action });
-            subUl.appendChild(subLi);
-        });
-        li.appendChild(subUl);
-
-        li.addEventListener('mouseenter', function() {
-            const subMenu = li.querySelector('ul');
-            subMenu.style.display = 'block';
-            
-            subMenu.style.left = '100%';
-            subMenu.style.right = 'auto';
-            
-            const subRect = subMenu.getBoundingClientRect();
-            const viewportWidth = window.innerWidth;
-
-            if (subRect.right > viewportWidth) {
-                subMenu.style.left = 'auto';
-                subMenu.style.right = '100%';
-            } else if (subRect.left < 0) { 
-                subMenu.style.left = '0';
-                subMenu.style.right = 'auto';
-            }
-        });
-
-        li.addEventListener('mouseleave', function() {
-            const subMenu = li.querySelector('ul');
-            subMenu.style.display = 'none'; 
-        });
-    }
-
-    return li;
-}
-
-
-function showContextMenu(x, y, options) {
-    hideContextMenu();
-    const tempContextMenu = createEl('div', { id: 'contextMenu', className: 'context-menu' });
-    const ul = createEl('ul');
-    for (const key in options) {
-        if (options.hasOwnProperty(key)) {
-            const itemOptions = options[key];
-            const li = createMenuItem(key, itemOptions);
-            ul.appendChild(li);
-        }
-    }
-    tempContextMenu.appendChild(ul);
-    document.body.appendChild(tempContextMenu);
-
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    const menuWidth = tempContextMenu.offsetWidth;
-    const menuHeight = tempContextMenu.offsetHeight;
-
-    let left = Math.min(x, viewportWidth - menuWidth);
-    let top = Math.min(y, viewportHeight - menuHeight);
-
-    tempContextMenu.style.setProperty('--menu-left', `${left}px`);
-    tempContextMenu.style.setProperty('--menu-top', `${top}px`);
-
-    contextMenu = tempContextMenu;
-
-    document.addEventListener('click', clickOutsideContextMenu);
-}
-
-
-
-function clickOutsideContextMenu(event) {
-    if (contextMenu && !contextMenu.contains(event.target) && !contextList[event.target.id]) {
-        hideContextMenu();
-    }
-}
-
-function hideContextMenu() {
-    if (contextMenu) {
-        contextMenu.remove();
-        contextMenu = null; // Reset contextMenu variable
-        document.removeEventListener('click', clickOutsideContextMenu);
-    }
-}
-
-
-
-
-
-
-
-function createBlackImage() {
-    const canvas = createEl('canvas');
-    canvas.width = 50; 
-    canvas.height = 50; 
-    const ctx = canvas.getContext('2d');
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    const dataURL = canvas.toDataURL('image/png');
-    return dataURL;
-}
-function removeFromGuildList(guild_id) {
-    const guildImg = getId(guild_id);
-    if (guildImg && guildsList.contains(guildImg)) {
-        const parentLi = guildImg.closest('li');
-        if (parentLi) {
-            parentLi.remove();
-        }
-    }
-}
-
-function updateGuildList(guildData) {
-    if (!guildData) {
-        console.warn("Tried to update guild list without data.");
-        return;
-    }
-
-    currentGuildData = guildData;
-    guildsList.innerHTML = "";
-
-    const mainLogo = createEl('li');
-    const mainLogoImg = createEl('img', {
-        id: 'main-logo',
-        src: '/static/images/icons/icon.png',
-        'data-src': '/static/images/icons/icon.png',
-        style: 'width: 30px; height: 30px; border: 10px solid rgb(49, 51, 56); user-select: none;'
-    });
-    mainLogoImg.addEventListener('mousedown', function() {
-        mainLogoImg.style.transform = 'translateY(50px)';
-    });
-
-    mainLogoImg.addEventListener('mouseup', function() {
-        mainLogoImg.style.transform = 'translateY(0)';
-    });
-
-    mainLogoImg.addEventListener('mouseleave', function() {
-        mainLogoImg.style.transform = 'translateY(0)';
-    });
-    mainLogoImg.addEventListener('click',function() {
-        clickMainLogo();
-    });
-
-
-    
-    mainLogo.appendChild(mainLogoImg);
-    guildsList.appendChild(mainLogo);
-
-    guildData.forEach((guild) => {
-        const existingGuild = getId(guild.id);
-        if (existingGuild) {
-            return;
-        }
-        const li = createEl('li');
-        const img = createEl('img', { className: 'guilds-list' });
-        const whiteRod = createEl('div', { className: 'white-rod' });
-        const imgSrc = guild.src && guild.src != 'black' ? guild.src : createBlackImage();
-        guildAuthorIds[guild.id] = guild.owner_id;
-        img.src = imgSrc;
-        li.appendChild(img);
-        li.appendChild(whiteRod);
-
-        img.id = guild.id;
-        img.addEventListener('click', function () {
-            loadGuild(guild.id,guild.first_channel_id,guild.name,)
-        });
-        
-        guildsList.appendChild(li);
-
-        guildNames[guild.id] = guild.name;
-    });
-    addKeybinds();
-    
-}
-
-
-
-function appendToGuildList(guild) {
-    const guildsList = getId('guilds-list'); 
-    if (guildsList.querySelector(`#${guild.id}`)) { return; }
-    const li = createEl('li');
-    const img = createEl('img',{className : 'guilds-list'});
-    img.src = guild.src;
-    li.appendChild(img);
-    const whiteRod = createEl('div',{className:'white-rod'});
-    li.appendChild(whiteRod);
-    img.id = guild.id;
-    img.addEventListener('click', function () {
-        loadGuild(guild.id,guild.first_channel_id,guild.name,)
-    });
-
-    guildsList.appendChild(li);
-    guildNames[guild.id] = guild.name;
-
-    addKeybinds();
-}
-
-
-
-
-function alertUser(subject, content) {
-    const popUpSubject = createEl('h1', { className: 'pop-up-subject', textContent: subject });
-    const popUpContent = createEl('p', { className: 'pop-up-content', textContent: content });
-
-    const popAcceptButton = createEl('button', { className: 'pop-up-accept', textContent: 'Tamam' });
-    const popRefuseButton = createEl('button', { className: 'pop-up-refuse', textContent: 'İptal' });
-
-    const buttonContainer = createEl('div', { className: 'pop-button-container' });
-    buttonContainer.appendChild(popAcceptButton);
-    buttonContainer.appendChild(popRefuseButton);
-
-    const contentElements = [popUpSubject, popUpContent, buttonContainer];
-
-    popAcceptButton.addEventListener('click', function () {
-        closePopUp(outerParent, outerParent.firstChild);
-    });
-    popRefuseButton.addEventListener('click', function () {
-        closePopUp(outerParent, outerParent.firstChild);
-    });
-
-    outerParent = createPopUp({
-        contentElements: contentElements,
-        id: null 
-    });
-}
-
-function askUser(subject, content, successText, acceptCallback, isRed = false) {
-    const popUpSubject = createEl('h1', { className: 'pop-up-subject', textContent: subject });
-    const popUpContent = createEl('p', { className: 'pop-up-content', textContent: content });
-    const popAcceptButton = createEl('button', { className: 'pop-up-accept', textContent: successText });
-    if (isRed) {
-        popAcceptButton.style.backgroundColor = 'rgb(218, 55, 60)';
-    }
-    let outerParent;
-    popAcceptButton.addEventListener('click', function () {
-        acceptCallback();
-        closePopUp(outerParent, outerParent.firstChild);
-    });
-
-    const popRefuseButton = createEl('button', { className: 'pop-up-refuse', textContent: 'İptal' });
-    popRefuseButton.addEventListener('click', function () {
-        closePopUp(outerParent, outerParent.firstChild);
-    });
-
-    const buttonContainer = createEl('div', { className: 'pop-button-container' });
-    buttonContainer.appendChild(popAcceptButton);
-    buttonContainer.appendChild(popRefuseButton);
-
-    const contentElements = [popUpSubject, popUpContent, buttonContainer];
-
-    outerParent = createPopUp({
-        contentElements: contentElements,
-        id: null 
-    });
-}
 
 
 function generateSettingsHtml(settings,isGuild=false) {
@@ -949,319 +119,8 @@ const guildSettings = [
     { category: 'Emoji', label: 'Emoji' },
 ];
 
-function getGuildSettings() {
-    let setToReturn = [...guildSettings]; 
-    if (isSelfAuthor()) {
-        setToReturn.push({ category: 'Invites', label: 'Davetler' });
-        setToReturn.push({ category: 'Roles', label: 'Roller' });
-        setToReturn.push({ category: 'Delete Guild', label: 'Sunucuyu Sil' });
-    }
-    return setToReturn; 
-}
 
 
-function getGuildSettingsHTML() {
-    const guildSettingsHtml = generateSettingsHtml(getGuildSettings(),isGuild=true);
-    return guildSettingsHtml;
-    
-}
-function getSettingsHtml() {
-    const userSettingsHtml = generateSettingsHtml(userSettings);
-    return userSettingsHtml;
-    
-}
-function getActivityPresenceHtml() {
-    return `
-        <h3 id="activity-title">Etkinlik Gizliliği</h3>
-        <h3 id="settings-description">ETKİNLİK DURUMU</h3>
-        <div class="toggle-card">
-            <label for="activity-toggle">Tespit edilen etkinliği diğerleriyle paylaş</label>
-            <label for="activity-toggle">Herkese açık bir Sahne'ye katıldığında LiventCord bu durumunu otomatik olarak günceller.</label>
-            <div id="activity-toggle" class="toggle-box">
-                <div id="toggle-switch" class="toggle-switch">
-                    <div class="enabled-toggle">
-                        <svg viewBox="0 0 28 20" preserveAspectRatio="xMinYMid meet" aria-hidden="true" class="icon">
-                        <rect fill="white" x="4" y="0" height="20" width="20" rx="10"></rect>
-                        <svg viewBox="0 0 20 20" fill="none">
-                        <path fill="rgba(35, 165, 90, 1)" d="M7.89561 14.8538L6.30462 13.2629L14.3099 5.25755L15.9009 6.84854L7.89561 14.8538Z"></path>
-                        <path fill="rgba(35, 165, 90, 1)" d="M4.08643 11.0903L5.67742 9.49929L9.4485 13.2704L7.85751 14.8614L4.08643 11.0903Z"></path></svg> </svg>
-                        
-                    </div>
-                    <div class="disabled-toggle">
-                        <svg viewBox="0 0 28 20" preserveAspectRatio="xMinYMid meet" aria-hidden="true" class="icon">
-                        <rect fill="white" x="4" y="0" height="20" width="20" rx="10">
-                        </rect><svg viewBox="0 0 20 20" fill="none">
-                        <path fill="rgba(128, 132, 142, 1)"  d="M5.13231 6.72963L6.7233 5.13864L14.855 13.2704L13.264 14.8614L5.13231 6.72963Z"></path>
-                            <path fill="rgba(128, 132, 142, 1)" d="M13.2704 5.13864L14.8614 6.72963L6.72963 14.8614L5.13864 13.2704L13.2704 5.13864Z"></path></svg></svg>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-}
-function getNotificationsHtml() {
-    return `
-        Bildirimler
-    `
-}
-function getOverviewHtml() {
-    return `
-    <div id="settings-title">Sunucuya Genel Bakış</div>
-    <div id="guild-settings-rightbar">
-        <div id="set-info-title-guild-name">SUNUCU ADI</div>
-        <input type="text" id="guild-overview-name-input" autocomplete="off" value="${currentGuildName}" onkeydown="onEditNick()" maxlength="32">
-        <img id="guild-image" onclick="triggerguildImageUpdate()" style="user-select: none;">
-        <p id="guild-image-remove" style="display:none" >Kaldır</p>
-        <form id="guildImageForm" enctype="multipart/form-data">
-            <input type="file" name="guildImage" id="guildImage" accept="image/*" style="display: none;">
-        </form>
-    </div>
-    `
-}
-function getMissingHtml(title) {
-    return `
-
-    <div id="settings-title">Sunucuya Genel Bakış</div>
-    <div id="guild-settings-rightbar">
-        <p style="font-size:20px; color:white; font-weight:bold; margin-top: -150px;">${title}</p>
-        <img src="/static/404_files/noodle.gif"><img>
-
-    </div>
-    `
-}
-function getAccountSettingsHtml() {
-    return `
-    <div id="settings-rightbartop"></div>
-    <div id="settings-title">Hesabım</div>
-    <div id="settings-rightbar">
-        <div id="settings-light-rightbar">
-            <div id="set-info-title-nick">KULLANICI ADI</div>
-            <div id="set-info-nick">${currentUserName}</div>
-            <div id="set-info-title-email">E POSTA</div>
-            <i id="set-info-email-eye" style="cursor:pointer;" class="fas fa-eye toggle-password" onclick="toggleEmail()"> </i>
-            <div id="set-info-email">${masked_email}</div>
-
-        </div>
-        
-        <input type="text" id="new-nickname-input" autocomplete="off" value="${currentUserName}" onkeydown="onEditNick()" maxlength="32">
-        <img id="settings-self-profile" src="/profiles/${currentUserId}" onclick="triggerFileInput()" style="user-select: none;">
-        <div class="bubble" style="margin-left:90px; top:35px;"></div>
-        <form id="profileImageForm" enctype="multipart/form-data">
-            <input type="file" name="profileImage" id="profileImage" accept="image/*" style="display: none;">
-        </form>
-        <span id="settings-self-name">${currentUserName}</span>
-    </div>
-    `
-}
-function getAppearanceHtml() {
-    return `
-        <h3>Görünüm</h3>
-        <div class="toggle-card">
-            <label for="snow-toggle">Kış Modu</label>
-            <label for="snow-toggle">Kar yağışını aktifleştir.</label>
-            <div id="snow-toggle" class="toggle-box">
-                <div id="toggle-switch" class="toggle-switch">
-                    <div class="enabled-toggle">
-                        <svg viewBox="0 0 28 20" preserveAspectRatio="xMinYMid meet" aria-hidden="true" class="icon">
-                        <rect fill="white" x="4" y="0" height="20" width="20" rx="10"></rect>
-                        <svg viewBox="0 0 20 20" fill="none">
-                        <path fill="rgba(35, 165, 90, 1)" d="M7.89561 14.8538L6.30462 13.2629L14.3099 5.25755L15.9009 6.84854L7.89561 14.8538Z"></path>
-                        <path fill="rgba(35, 165, 90, 1)" d="M4.08643 11.0903L5.67742 9.49929L9.4485 13.2704L7.85751 14.8614L4.08643 11.0903Z"></path></svg> </svg>
-                        
-                    </div>
-                    <div class="disabled-toggle">
-                        <svg viewBox="0 0 28 20" preserveAspectRatio="xMinYMid meet" aria-hidden="true" class="icon">
-                        <rect fill="white" x="4" y="0" height="20" width="20" rx="10">
-                        </rect><svg viewBox="0 0 20 20" fill="none">
-                        <path fill="rgba(128, 132, 142, 1)"  d="M5.13231 6.72963L6.7233 5.13864L14.855 13.2704L13.264 14.8614L5.13231 6.72963Z"></path>
-                            <path fill="rgba(128, 132, 142, 1)" d="M13.2704 5.13864L14.8614 6.72963L6.72963 14.8614L5.13864 13.2704L13.2704 5.13864Z"></path></svg></svg>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <div class="toggle-card">
-            <label for="party-toggle">Parti Modu</label>
-            <label for="party-toggle">Parti modunu aktifleştir.</label>
-            <div id="party-toggle" class="toggle-box">
-                <div id="toggle-switch" class="toggle-switch">
-                    <div class="enabled-toggle">
-                        <svg viewBox="0 0 28 20" preserveAspectRatio="xMinYMid meet" aria-hidden="true" class="icon">
-                        <rect fill="white" x="4" y="0" height="20" width="20" rx="10"></rect>
-                        <svg viewBox="0 0 20 20" fill="none">
-                        <path fill="rgba(35, 165, 90, 1)" d="M7.89561 14.8538L6.30462 13.2629L14.3099 5.25755L15.9009 6.84854L7.89561 14.8538Z"></path>
-                        <path fill="rgba(35, 165, 90, 1)" d="M4.08643 11.0903L5.67742 9.49929L9.4485 13.2704L7.85751 14.8614L4.08643 11.0903Z"></path></svg> </svg>
-                        
-                    </div>
-                    <div class="disabled-toggle">
-                        <svg viewBox="0 0 28 20" preserveAspectRatio="xMinYMid meet" aria-hidden="true" class="icon">
-                        <rect fill="white" x="4" y="0" height="20" width="20" rx="10">
-                        </rect><svg viewBox="0 0 20 20" fill="none">
-                        <path fill="rgba(128, 132, 142, 1)"  d="M5.13231 6.72963L6.7233 5.13864L14.855 13.2704L13.264 14.8614L5.13231 6.72963Z"></path>
-                            <path fill="rgba(128, 132, 142, 1)" d="M13.2704 5.13864L14.8614 6.72963L6.72963 14.8614L5.13864 13.2704L13.2704 5.13864Z"></path></svg></svg>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-}
-function handleToggleClick(toggleElement, toggleClickCallback) {
-    toggleElement.addEventListener('click', function() {
-        this.classList.toggle('active');
-        this.querySelector('#toggle-switch').classList.toggle('active');
-        toggleClickCallback();
-    });
-}
-
-function toggleCheckBox(toggleElement, value) {
-    if (value) {
-        toggleElement.querySelector('#toggle-switch').classList.add('active');
-        toggleElement.classList.add('active');
-    }
-}
-
-let isActivityShared = false;
-function selectSettingCategory(settingtype) { 
-    if (isUnsaved && settingtype != DeleteGuild) {
-        shakeScreen();
-        return;
-    }
-    let settingsContainer = getId('settings-rightcontainer');
-    
-    currentSettingsType = settingtype;
-    let newHTML = null;
-    let callback;
-    let isDefault = false;
-
-    switch (settingtype) {
-        case SoundAndVideo:
-            newHTML = `
-                <div id="settings-title">Ses Ayarları</div>
-                <select class="dropdown" id="sound-mic-dropdown"></select>
-                <select class="dropdown" id="sound-output-dropdown"></select>
-                <select class="dropdown" id="camera-dropdown"</select>
-            `;
-            callback = activateMicAndSoundOutput;
-            break;
-        case MyAccount:
-            newHTML = getAccountSettingsHtml();
-            callback = () => {
-                getId('profileImage').addEventListener('change', onEditProfile);
-                updateSelfProfile(currentUserId, currentUserName); 
-            }
-            let rightbar = getId('settings-rightbar');
-            if(!rightbar) {
-                rightbar = createEl('div',{id:'settings-rightbar'});
-                settingsContainer.appendChild(rightbar);
-            }
-            
-            break;
-        case Notifications :
-            newHTML = getNotificationsHtml();
-            break;
-        case ActivityPresence :
-            newHTML = getActivityPresenceHtml();
-            callback = () => { 
-                const activitySharedToggle = getId('activity-toggle');
-                toggleCheckBox(activitySharedToggle, loadBooleanCookie('isActivityShared'));
-                handleToggleClick(activitySharedToggle, () => {
-                    const isActivityShared = !loadBooleanCookie('isActivityShared');
-                    saveBooleanCookie('isActivityShared', isActivityShared);
-                });
-            }
-            break;
-        case Appearance:
-            newHTML = getAppearanceHtml();
-            callback = () => { 
-                const snowToggle = getId('snow-toggle');
-                const value = loadBooleanCookie('isSnow');
-                toggleCheckBox(snowToggle, value);
-                isSnow = value;
-                handleToggleClick(snowToggle, () => {
-                    toggleSnow();
-                    saveBooleanCookie('isSnow', isSnow);
-                });
-    
-                const partyToggle = getId('party-toggle');
-                const val = loadBooleanCookie('isParty');
-                isParty = val;
-                if(isParty) {
-                    enableBorderMovement();
-                } else {
-                    stopCurrentMusic();
-                }
-                toggleCheckBox(partyToggle, val);
-                handleToggleClick(partyToggle, () => {
-                    toggleParty();
-                    saveBooleanCookie('isParty', isParty);
-                });
-            }
-            break;
-
-        // server settings 
-        case Overview:
-            newHTML = getOverviewHtml();
-            callback = () => {
-                getId('guild-image').onerror = () => {
-                    getId('guild-image').src = createBlackImage();
-                }
-                if(permissionManager.canManageChannels()) {
-                    getId('guild-image').style.cursor = 'pointer';
-                    getId('guild-overview-name-input').style.cursor = 'pointer';
-                    getId('guildImage').addEventListener('change', onEditGuildProfile);
-                    getId('guild-overview-name-input').disabled = false;
-                    if(getId('guild-image').src != createBlackImage()) {
-                        enableElement('guild-image-remove');
-                        getId('guild-image-remove').addEventListener('click',removeguildImage);
-                    }
-                } else {
-                    getId('guild-image').style.cursor = 'now-allowed';
-                    getId('guild-overview-name-input').style.cursor = 'now-allowed';
-                    getId('guild-overview-name-input').disabled = true;
-                }
-                
-                getId('guild-image').src = `/guilds/${currentGuildId}`;
-                
-            }
-            break;
-        case DeleteGuild:
-            createDeleteGuildPrompt(currentGuildId,currentGuildName);
-            break;
-        default:
-            isDefault = true;
-            newHTML = getMissingHtml(settingtype);
-            break;
-        }
-    if(newHTML) {
-        settingsContainer.innerHTML = newHTML;
-        settingsContainer.insertBefore(getCloseButtonElement(),settingsContainer.firstChild)
-    }
-    if(callback) {
-        callback();
-    }
- 
-}
-function getCloseButtonElement() {
-    const button = createEl('button');
-    button.id = 'close-settings-button';
-    button.setAttribute('aria-label', 'Close settings');
-    button.setAttribute('role', 'button');
-    button.tabIndex = 0;
-
-    button.innerHTML = `
-        <svg aria-hidden="true" role="img" width="18" height="18" fill="none" viewBox="0 0 24 24">
-            <path fill="currentColor" d="M17.3 18.7a1 1 0 0 0 1.4-1.4L13.42 12l5.3-5.3a1 1 0 0 0-1.42-1.4L12 10.58l-5.3-5.3a1 1 0 0 0-1.4 1.42L10.58 12l-5.3 5.3a1 1 0 1 0 1.42 1.4L12 13.42l5.3 5.3Z"></path>
-        </svg>
-        <span id="close-keybind">ESC</span>
-    `;
-    button.onclick = closeSettings;
-    return button;
-}
-
-
-async function activateMicAndSoundOutput() {
-    activateMicAndCamera();
-    activateSoundOutput();
-}
 
 function createDeleteGuildPrompt(guild_id,guild_name) {
     if(!guild_id) { return }
@@ -1289,193 +148,15 @@ async function requestMicrophonePermissions() {
         {
             await sendAudioData();
         }
-
+        
     } catch (error) {
         console.log(error);
         alertUser('MİKROFON ERİŞİMİ ENGELLENDİ', 'Mikrofon izni reddedildi.');
         return false; // Permission denied or error occurred
     }
 } 
-async function sendAudioData() {
-    try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const mediaRecorder = new MediaRecorder(stream);
-
-        mediaRecorder.ondataavailable = async (e) => {
-
-        };
-
-        mediaRecorder.start();
-
-    } catch (err) {
-        console.error('Error accessing microphone:', err);
-    }
-}
 
 
-function activateMicAndCamera() {
-    async function requestMediaPermissions() {
-        try {
-            await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-            return true; // Permission granted
-        } catch (error) {
-            return false; // Permission denied or error occurred
-        }
-    }
-
-    function getMediaDevicesList() {
-        return navigator.mediaDevices.enumerateDevices()
-            .then(devices => devices.filter(device => device.kind === 'audioinput' || device.kind === 'videoinput'));
-    }
-    async function updateMediaOptions() {
-        const micDropdown = getId('sound-mic-dropdown');
-        micDropdown.innerHTML = ''; // Clear existing options
-        const cameraDropdown = getId('camera-dropdown');
-        cameraDropdown.innerHTML = ''; // Clear existing options
-        try {
-            const hasPermission = await requestMediaPermissions();
-
-            if (hasPermission) {
-                const mediaDevices = await getMediaDevicesList();
-                mediaDevices.forEach((device, index) => {
-                    const option = createEl('option',{fontSize:'12px',border:'none'});
-
-                    option.value = device.deviceId;
-                    if (device.kind === 'audioinput') {
-                        option.textContent = device.label || `Microphone ${index + 1}`;
-                        micDropdown.appendChild(option);
-                    } else if (device.kind === 'videoinput') {
-                        option.textContent = device.label || `Camera ${index + 1}`;
-                        cameraDropdown.appendChild(option);
-                    }
-                });
-            }
-
-            // Add default microphone and camera options at the end
-            const defaultMicOption = createEl('option',{fontSize:'12px',value:'default'});
-            defaultMicOption.textContent = 'Default Microphone';
-            micDropdown.appendChild(defaultMicOption);
-
-            const defaultCameraOption = createEl('option',{fontSize:'12px',value:'default'});
-            defaultCameraOption.textContent = 'Default Camera';
-            cameraDropdown.appendChild(defaultCameraOption);
-
-        } catch (error) {
-            console.error('Error updating media options:', error);
-
-            // Ensure the default options are added even if an error occurs
-            const defaultMicOption = createEl('option',{fontSize:'12px',value:'default'});
-            defaultMicOption.textContent = 'Default Microphone';
-            micDropdown.appendChild(defaultMicOption);
-
-            const defaultCameraOption = createEl('option',{fontSize:'12px',value:'default'});
-            defaultCameraOption.textContent = 'Default Camera';
-            cameraDropdown.appendChild(defaultCameraOption);
-        }
-    }
-
-    updateMediaOptions();
-    if(navigator && navigator.mediaDevices) {
-        navigator.mediaDevices.addEventListener('devicechange', updateMediaOptions);
-    }
-}
-
-
-
-
-function activateSoundOutput() {
-    // Function to request sound output device permissions
-    async function requestSoundOutputPermissions() {
-        try {
-            await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
-            return true; // Permission granted
-        } catch (error) {
-            return false; // Permission denied or error occurred
-        }
-    }
-
-    function getSoundOutputList() {
-        return navigator.mediaDevices.enumerateDevices()
-            .then(devices => devices.filter(device => device.kind === 'audiooutput'));
-    }
-
-    async function updateSoundOutputOptions() {
-        const dropdown = getId('sound-output-dropdown');
-        dropdown.innerHTML = ''; // Clear existing options
-
-        try {
-            const hasPermission = await requestSoundOutputPermissions();
-
-            if (hasPermission) {
-                const soundOutputs = await getSoundOutputList();
-                soundOutputs.forEach((output, index) => {
-                    const option = createEl('option');
-                    option.style.fontSize = '12px';
-                    option.style.border = 'none';
-                    option.value = output.deviceId;
-                    option.textContent = output.label || `Sound Output ${index + 1}`;
-                    dropdown.appendChild(option);
-                });
-            }
-
-            // Add default sound output option at the end
-            const defaultOption = createEl('option');
-            defaultOption.style.fontSize = '12px';
-            defaultOption.value = 'default';
-            defaultOption.textContent = 'Default Sound Output';
-            dropdown.appendChild(defaultOption);
-
-        } catch (error) {
-            console.error('Error updating sound output options:', error);
-
-            // Ensure the default sound output option is added even if an error occurs
-            const defaultOption = createEl('option');
-            defaultOption.style.fontSize = '12px';
-            defaultOption.value = 'default';
-            defaultOption.textContent = 'Default Sound Output';
-            dropdown.appendChild(defaultOption);
-        }
-    }
-
-    updateSoundOutputOptions();
-    navigator.mediaDevices.addEventListener('devicechange', updateSoundOutputOptions);
-}
-
-
-
-  
-
-let isMicrophoneOpen = true;
-function setMicrophone() {
-    let imagePath = isMicrophoneOpen ? `/static/images/icons/whitemic.png` : `/static/images/icons/redmic.png`;
-    microphoneButton.src = imagePath;
-    isMicrophoneOpen = !isMicrophoneOpen;
-    console.log("Set microphone! to " , isMicrophoneOpen);
-}
-
-let isEarphonesOpen = true;
-function setEarphones() {
-    let imagePath = isEarphonesOpen ? `/static/images/icons/whiteearphones.png` : `/static/images/icons/redearphones.png`;
-    earphoneButton.src = imagePath;
-    isEarphonesOpen = !isEarphonesOpen;
-    console.log("Set earphones! to " , isEarphonesOpen);
-}
-
-
-
-
-
-function hidePopUp(pop) {
-    pop.style.animation = 'slide-down 0.15s ease-in-out forwards';
-    setTimeout(() => {
-        pop.style.display = 'none';
-    }, 1500); 
-}
-
-function showUnsavedPopUp(pop) {
-    pop.style.display = 'block';
-    pop.style.animation = 'slide-up 0.5s ease-in-out forwards';
-}
 
 function applySettings() {
     
@@ -1504,55 +185,6 @@ function applySettings() {
     }
 
 }
-function generateUnsavedPopUp() {
-    const popupDiv = createEl('div',{id:'settings-unsaved-popup'});
-  
-    const textDiv = createEl('div',{id:'settings-unsaved-popup-text',textContent:'Dikkat — kaydetmediğin değişiklikler var!'});
-    popupDiv.appendChild(textDiv);
-  
-    const resetButton = createEl('span',{id:'settings-unsaved-popup-resetbutton',textContent:'Sıfırla'});
-
-
-    resetButton.addEventListener('click',function() {
-
-        hidePopUp(popupDiv);
-        const nickinput = getId('new-nickname-input')
-        if(nickinput) {
-            nickinput.value = currentUserName;
-        }
-        const profileimg = getId('profileImage');
-        if(profileimg) {
-            profileimg.files = null;
-        }
-        const settingsSelfProfile = getId('settings-self-profile');
-
-        if(lastConfirmedProfileImg) {
-            settingsSelfProfile.src = lastConfirmedProfileImg;
-        } else {
-            
-        }
-
-        const guildNameInput = getId('guild-overview-name-input');
-        if(guildNameInput) {
-            guildNameInput.value = currentGuildName;
-        }
-
-        isUnsaved = false;
-        isChangedProfile = false;
-        getId('');
-
-    });
-    popupDiv.appendChild(resetButton);
-  
-    const applyButton = createEl('button');
-    applyButton.id = 'settings-unsaved-popup-applybutton';
-    applyButton.textContent = 'Değişiklikleri Kaydet';
-    applyButton.onclick = applySettings;
-    popupDiv.appendChild(applyButton);
-    getId('settings-menu').appendChild(popupDiv);
-  
-    return popupDiv;
-}
 
 
 
@@ -1575,67 +207,7 @@ function removeElement(elementname) {
         element.remove();
     }
 }
-function createCropPop(inputSrc, callbackAfterAccept) {
-    const cropTitle = 'Görseli Düzenle';
-    const inviteTitle = createEl('p', { id: 'invite-users-title', textContent: cropTitle });
 
-    const imageContainer = createEl('div', { id: 'image-container' });
-    const appendButton = createEl('button', { className: 'pop-up-append', textContent: 'Uygula' });
-    let parentContainer;
-    
-    appendButton.addEventListener('click', () => {
-        // Get the cropped result as a square image (the output size can be adjusted as needed)
-        croppie.result({
-            type: 'base64',
-            format: 'jpeg',
-            quality: 1,
-            size: { width: 430, height: 430 }, // Set size to square (adjust if necessary)
-            circle: false // Ensure the output is not circular
-        }).then(function (base64) {
-            callbackAfterAccept(base64);
-            parentContainer.remove();
-            updateSettingsProfileColor();
-        });
-    });
-    
-    const backButton = createEl('button', { textContent: 'İptal', className: 'create-guild-back common-button' });
-
-    backButton.addEventListener('click', () => { parentContainer.remove(); });
-
-    const popBottomContainer = createEl('div', { className: 'popup-bottom-container', id: 'invite-popup-bottom-container' });
-    popBottomContainer.style.bottom = '-5%';
-    popBottomContainer.style.top = 'auto';
-    popBottomContainer.style.height = '10%';
-    popBottomContainer.style.zIndex = '-1';
-    backButton.style.left = '20px';
-    
-    const contentElements = [inviteTitle, imageContainer, backButton, appendButton, popBottomContainer];
-    
-    parentContainer = createPopUp({
-        contentElements: contentElements,
-        id: 'cropPopContainer',
-        closeBtnId: 'invite-close-button'
-    });
-    
-    const imageElement = createEl('img');
-    imageElement.src = inputSrc;
-
-    const croppie = new Croppie(imageContainer, {
-        viewport: { width: 430, height: 430, type: 'circle' }, 
-        boundary: { width: 440, height: 440 }, 
-        showZoomer: true,
-        enableExif: true
-    });
-
-    croppie.bind({
-        url: inputSrc
-    });
-    
-    getId('cropPopContainer').style.setProperty('height', '600px', 'important');
-    getId('cropPopContainer').style.setProperty('width', '600px', 'important');
-
-    imageContainer.querySelector('.cr-slider-wrap').querySelector('.cr-slider').style.transform = 'scale(1.5);';
-}
 
 function removeguildImage() {
     socket.emit('remove_guild_image',{'guild_id': currentGuildId})
@@ -1825,59 +397,6 @@ function createGuild() {
     });
 }
     
-function createFireWorks() {
-    setTimeout(() => {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          disableForReducedMotion: true
-        });
-      }, 500);
-    return;
-}
-const getCursorXY = (input, selectionPoint) => {
-    const { offsetLeft: inputX, offsetTop: inputY, scrollLeft, scrollTop, clientWidth, clientHeight } = input;
-    const div = createEl('div');
-
-
-    div.style.position = 'absolute';
-    div.style.whiteSpace = 'pre-wrap'; 
-    div.style.wordWrap = 'break-word'; 
-    div.style.visibility = 'hidden'; 
-    div.style.overflow = 'hidden';
-    div.style.top = `${inputY}px`;
-    div.style.left = `${inputX}px`;
-    div.style.padding = '10px 100px 10px 55px'; 
-    div.style.fontFamily = 'Arial, Helvetica, sans-serif';
-    div.style.backgroundColor = '#36393f'; 
-    div.style.border = 'none'; 
-    div.style.lineHeight = '20px'; 
-    div.style.fontSize = '17px'; 
-    div.style.borderRadius = '7px'; 
-    div.style.boxSizing = 'border-box'; 
-    div.style.maxHeight = '500px';
-    div.style.width = 'calc(100vw - 585px)';
-    const swap = '\u00A0'; 
-    const inputValue = input.tagName === 'INPUT' ? input.value.replace(/ /g, swap) : input.value;
-    const textNode = document.createTextNode(inputValue.substring(0, selectionPoint));
-    div.appendChild(textNode);
-    document.body.appendChild(div);
-    const range = document.createRange();
-    range.selectNodeContents(div);
-    range.setStart(textNode, selectionPoint);
-    range.setEnd(textNode, selectionPoint);
-    const rect = range.getBoundingClientRect();
-    const x = rect.left - inputX + scrollLeft + 5;
-    const y = rect.top - inputY + scrollTop;
-    document.body.removeChild(div);
-
-    return {
-        x: Math.min(x, clientWidth), 
-        y: Math.min(y, clientHeight) 
-    };
-};
-
 
 
 
@@ -2015,26 +534,6 @@ function setUserListLine() {
         userLine.style.display = 'none';
     }
 }
-function handleResize() {
-    
-    if(window.innerWidth < 1200) {
-        if(isOnMe) {
-            disableElement('user-list');
-            const userLine = document.querySelector('.horizontal-line');
-            userLine.style.display = 'none';
-        } else {
-            setUserListLine();
-        }   
-    }  else {
-        setUserListLine();
-    }
-    
-    const inputRightToSet = userList.style.display === 'flex' ? '463px' : '76px';
-    const addFriendInputButton = getId('addfriendinputbutton');
-    if (addFriendInputButton) {
-        addFriendInputButton.style.right = inputRightToSet;
-    }
-}
 function userExistsDm(userId) {
     return userId in dm_users;
 }
@@ -2106,7 +605,6 @@ function loadMainMenu(isChangingUrl=true) {
             } else {
                 handleMenu();
             }
-
         }
 
     } else {
@@ -2131,7 +629,6 @@ function loadMainMenu(isChangingUrl=true) {
     if(cachedFriMenuContent) {
         chanList.innerHTML = cachedFriMenuContent;
     }
-    
 
 
     handleResize();
@@ -2222,54 +719,7 @@ function loadApp(friend_id=null) {
     handleResize();
     isChangingPage = false;
 }
-function openTbHelp() {
-    alertUser('Stop it, get some help')
 
-}
-function loadMainToolbar() {
-    disableElement('tb-call')
-    disableElement('tb-video-call')
-    disableElement('tb-pin')
-    disableElement('tb-createdm')
-    disableElement('tb-showprofile')
-    disableElement('tb-search')
-}
-function loadGuildToolbar() {
-    disableElement('tb-call')
-    disableElement('tb-video-call')
-    enableElement('tb-pin')
-    disableElement('tb-createdm')
-    enableElement('tb-showprofile')
-    enableElement('tb-search')
-}
-function loadDmToolbar() {
-    enableElement('tb-call')
-    enableElement('tb-video-call')
-    enableElement('tb-pin')
-    enableElement('tb-createdm')
-    enableElement('tb-showprofile')
-    enableElement('tb-search')
-}
-
-
-function fillDropDownContent() {
-    if(permissionManager.canManageChannels()) {
-        enableElement('channel-dropdown-button');
-    } else {
-        disableElement('channel-dropdown-button');
-    }
-    if(permissionManager.canManageChannels) {
-        enableElement('invite-dropdown-button');
-    } else {
-        disableElement('invite-dropdown-button');
-    }
-
-    if(isSelfAuthor()) {
-        disableElement('exit-dropdown-button');
-    } else {
-        enableElement('exit-dropdown-button');
-    }
-}
 function changeCurrentDm(friend_id) {
     isChangingPage = true;
     isOnMe = false;
@@ -2307,6 +757,8 @@ function changecurrentGuild() {
   
     isChangingPage = false;
 }
+
+
 socket.on('voice_users_response',function(data) {
     const channel_id = data.channel_id;
     playAudio('/static/sounds/joinvoice.mp3');
@@ -2330,55 +782,15 @@ socket.on('voice_users_response',function(data) {
     }
     usersInVoice[channel_id] = data.users_list;
 });
+
 function joinVoiceChannel(channel_id) {
     if(currentVoiceChannelId == channel_id) { return; }
-
-    const data = { 
-        'guild_id' : currentGuildId, 'channel_id' : channel_id
-    }
-
+    const data = { 'guild_id' : currentGuildId, 'channel_id' : channel_id }
     socket.emit('join_voice_channel',data);
-
     return;
-    
 }
 
-function closeCurrentCall() {
-    currentAudioPlayer = getId('audio-player');
-    playAudio('/static/sounds/leavevoice.mp3');
 
-    const sp = getId('sound-panel');
-    const oldVoiceId = currentVoiceChannelId;
-    sp.style.display = 'none';
-    clearVoiceChannel(oldVoiceId);
-    currentVoiceChannelId = '';
-    currentVoiceChannelGuild = '';
-    const buttonContainer = channelsUl.querySelector(`li[id="${oldVoiceId}"]`);
-
-    mouseLeaveChannelButton(buttonContainer, false,oldVoiceId);
-    usersInVoice[oldVoiceId] = [];
-
-    const data = {
-        'guild_id' : currentVoiceChannelGuild,
-        'channel_id' : currentVoiceChannelId
-    }
-    socket.emit('leave_voice_channel',data)
-}
-function clearVoiceChannel(channel_id) {
-    const channelButton = channelsUl.querySelector(`li[id="${channel_id}"]`);
-    if(!channelButton) {return; }
-    const buttons = channelButton.querySelectorAll('.channel-button');
-    buttons.forEach((btn,index) => {
-        btn.remove();
-    });
-    let channelUsersContainer = channelButton.querySelector('.channel-users-container');
-    if(channelUsersContainer) {
-        channelUsersContainer.remove();
-    }
-    let existingContentWrapper = channelButton.querySelector('.content-wrapper');
-    console.log(existingContentWrapper.style.marginRight);
-    existingContentWrapper.style.marginRight = '100px';
-}
 
 function refreshInviteId() {
     if(!current_invite_ids) { return; }
@@ -2423,97 +835,8 @@ function changeUrlWithFireWorks(guild_id,channel_id,guild_id) {
 }
 
 
-function getBase64Image(imgElement) {
-    const canvas = createEl('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = imgElement.naturalWidth;
-    canvas.height = imgElement.naturalHeight;
-    ctx.drawImage(imgElement, 0, 0);
-    return canvas.toDataURL('image/png');
-}
-function updateSettingsProfileColor() {
-    const settingsProfileImg = getId('settings-self-profile');
-    const rightBarTop = getId('settings-rightbartop');
-    if(rightBarTop) {
-        rightBarTop.style.backgroundColor = getAverageRGB(settingsProfileImg);
-    }
-}
-
-function updateSelfProfile(userId, userName,is_timestamp=false,is_after_uploading=false) {
-    if(!userId) { return; }
-    const timestamp = new Date().getTime(); 
-    let selfimagepath = is_timestamp ? `/profiles/${userId}.png?ts=${timestamp}` : `/profiles/${userId}.png`;
-    const selfProfileImage = getId('self-profile-image');
-
-    selfProfileImage.onerror = () => {
-        if (selfProfileImage.src != defaultProfileImageUrl) {
-            selfProfileImage.src = defaultProfileImageUrl;
-        }
-    }
-    selfProfileImage.onload = () => {
-        updateSettingsProfileColor();
-    }
-    selfProfileImage.src = selfimagepath;
-    
-    if(currentSettingsType == MyAccount) {
-        const settingsSelfNameElement = getId('settings-self-name');
-        const selfNameElement = getId('self-name');
-        const settingsSelfProfile = getId('settings-self-profile');
 
 
-        if(userName){
-            settingsSelfNameElement.innerText = userName;
-            selfNameElement.innerText = userName;
-        }
-        
-        settingsSelfProfile.onerror = function() {
-            if (settingsSelfProfile.src != defaultProfileImageUrl) {
-                settingsSelfProfile.src = defaultProfileImageUrl;
-            }
-        };
-        settingsSelfProfile.onload = function(event) {
-            updateSettingsProfileColor();
-            if(is_after_uploading) {
-                const base64output = getBase64Image(settingsSelfProfile);
-                if(base64output) {
-                    console.log("Setting self profile as ", userId, userName)
-                    lastConfirmedProfileImg = base64output;
-                }
-            }
-        };
-        settingsSelfProfile.src = selfimagepath;
-        
-    }
-}
-function shakeScreen() {
-    currentSettingsType = null;
-    if (!currentPopUp) { currentPopUp = generateUnsavedPopUp(); }
-    showUnsavedPopUp(currentPopUp);
-    currentPopUp.style.backgroundColor = '#ff1717';
-
-    // Increase shake force
-    shakeForce += 0.5;
-    if (shakeForce > 5) {
-        shakeForce = 5; // Cap the shake force at a maximum value
-    }
-
-    // Clear previous resetTimeout if it exists
-    clearTimeout(resetTimeout);
-
-    // Reset animation and apply shake animation with scaled force
-    document.body.classList.remove('shake-screen'); // Remove the animation class
-    void document.body.offsetWidth; // Trigger reflow to reset animation
-    document.body.classList.add('shake-screen'); // Add the animation class with updated force
-
-    // Set a new resetTimeout to reset shake force after 5 seconds
-    resetTimeout = setTimeout(() => {
-        shakeForce = 1; // Reset shake force to 1
-        document.body.classList.remove('shake-screen'); // Remove the animation class
-        currentPopUp.style.backgroundColor = '#0f0f0f'; // Reset background color
-    }, 5000); 
-
-    return;
-}
 function closeSettings() {
     if(isUnsaved) {
         shakeScreen();
@@ -2526,11 +849,6 @@ function closeSettings() {
 
     setTimeout(() => {
         getId('settings-overlay').style.display = 'none';
-
-    
-        if(currentSettingsType == MyAccount) {
-        }
-        
     }, 300);
 
     isSettingsOpen = false;
@@ -2550,9 +868,6 @@ function changeNickname() {
         userNick = newNickname;
         socket.emit('set_nick', newNickname);
 
-
-
-
         newNicknameInput.value = newNickname;
         changeNicknameTimeout = setTimeout(() => {
             changeNicknameTimeout = null;
@@ -2565,20 +880,14 @@ let changeGuildNameTimeout;
 function changeGuildName() {
     const newGuildInput = getId('guild-overview-name-input');
     const newGuildName = newGuildInput.value.trim();
-
     if (newGuildName !== '' && !changeGuildNameTimeout && newGuildName != currentGuildName) {
-
         console.log("Changed guild name to: " + newGuildName);
-
         const objecttosend = {'' : newGuildName,'guild_id' : currentGuildId};
         socket.emit('set_guild_name', objecttosend);
-
-
         const setInfoNick = getId('set-info-nick');
         if(setInfoNick) {
             setInfoNick.innerText = newGuildName;
         }
-
         newGuildInput.value = newGuildName;
         changeGuildNameTimeout = setTimeout(() => {
             changeGuildNameTimeout = null;
@@ -2587,16 +896,7 @@ function changeGuildName() {
     }
 }
 
-function setActiveIcon() {
-    let favicon = getId('favicon');
-    let activeIconHref = '/static/images/icons/iconactive.png';
-    favicon.href = activeIconHref;
-}
-function setInactiveIcon() {
-    let favicon = getId('favicon');
-    let activeIconHref =  '/static/images/icons/icon.png';
-    favicon.href = activeIconHref;
-}
+
 
 function logOutPrompt() {
     askUser('Çıkış Yap','Çıkış yapmak istediğine emin misin?','Çıkış Yap',logOut,color=isRed=true);
@@ -2643,22 +943,7 @@ document.addEventListener('visibilitychange', function() {
 });
 
 
-let cachedAudioNotify = null;
 
-function playNotification() {
-    try {
-        if (!cachedAudioNotify) {
-            cachedAudioNotify = new Audio("https://raw.githubusercontent.com/TheLp281/LiventCord/main/notification.mp3");
-        }
-        cachedAudioNotify.play();
-    } catch (error) {
-        console.log(error);
-    }
-}
-
-function hideLoadingScreen() {
-    loadingScreen.style.display = 'none';
-}
 
 
 
@@ -2756,21 +1041,6 @@ socket.on('update_guilds',data => {
     updateGuildList(data);
 });
 
-function getLastSecondMessageDate() {
-    const messages = chatContent.children;
-    if (messages.length < 2) return  '';
-
-    const secondToLastMessage = messages[messages.length - 2];
-    if (secondToLastMessage) {
-        const dateGathered = secondToLastMessage.getAttribute('data-date');
-        if(dateGathered) {
-            const parsedDate = new Date(dateGathered);
-            const formattedDate = formatDate(parsedDate);
-            return formattedDate;
-        }
-    }
-    return '';
-}
 
 socket.on('deletion_message', data=> {
     deleteLocalMessage(data.message_id,data.guild_id,data.channel_id,data.is_dm);
@@ -2855,104 +1125,13 @@ socket.on('old_messages_response', function(data) {
     handleOldMessagesResponse(data);
 });
 
-function refreshUserProfileImage(user_id,user_nick=null) {
-    if (user_id == currentUserId) {
-        updateSelfProfile(user_id,null,true,true);
-    }
-    // from user list
-    const profilesList = userList.querySelectorAll('.profile-pic');
-    profilesList.forEach(user => {
-        if(user_nick) {
-            if (user.dataset.user_id === user_id) {
-                user.parentNode.querySelector('.profileName').innerText = user_nick;
-            }
-        }
-        if(user_id) {
-            if (user.dataset.user_id === user_id) {
-                user.src = `/profiles/${user_id}.png`;
-            }
-        }
-    });
 
-    // from chat container 
-    const usersList = chatContainer.querySelectorAll('.profile-pic');
-    usersList.forEach(user => {
-        if(user_nick) {
-            if (user.dataset.user_id === user_id) {
-                user.parentNode.querySelector('.profileName').innerText = user_nick;
-            }
-        }
-        if(user_id) {
-            if (user.dataset.user_id === user_id) {
-                user.src = `/profiles/${user_id}.png`;
-            }
-        }
-    });
-}
 
 
 socket.on('update_user_profile', data => {
     refreshUserProfileImage(data.user_id);
 });
-function getBeforeElement(element) {
-    const elements = Array.from(chatContent.children);
-    const index = elements.indexOf(element);
-    if (index > 0) {
-        return elements[index - 1];
-    } else {
-        return null;
-    }
-}
 
-function deleteLocalMessage(message_id,guild_id,channel_id,is_dm) {
-    if(isOnGuild && channel_id != currentChannelId || isOnDm && is_dm && channel_id != currentDmId) { 
-        console.error("Can not delete message: ",guild_id,channel_id, message_id,  currentGuildId,  currentChannelId);
-        return; 
-    }
-    const messages = Array.from(chatContent.children); 
-
-    for (let i = 0; i < messages.length; i++) {
-        let element = messages[i];
-        if (!element.classList || !element.classList.contains('message')) { continue; }
-        const user_id = element.dataset.user_id;
-    
-        if (String(element.id) == String(message_id)) {
-            console.log("Removing element:", message_id);
-            element.remove();
-            const foundMsg = getMessage(false);
-            if(foundMsg) {
-                lastSenderID = foundMsg.dataset.user_id;
-            }
-        } // Check if the element matches the currentSenderOfMsg and it doesn't have a profile picture already
-        else if (!element.querySelector('.profile-pic') && getBeforeElement(element).dataset.user_id != element.dataset.user_id) {
-            console.log("Creating profile img...");
-            const messageContentElement = element.querySelector('#message-content-element');
-            const date = element.dataset.date;
-            const smallDate = element.querySelector('.small-date-element');
-            if(smallDate)  {
-                smallDate.remove();
-            }
-            const nick = getUserNick(user_id);
-            
-            createProfileImageChat(element, messageContentElement, nick, user_id, date, true);
-            break;
-        }
-    }
-    const dateBars = chatContent.querySelectorAll('.dateBar');
-
-    dateBars.forEach(bar => {
-        if (bar === chatContent.lastElementChild) {
-            bar.remove();
-        }
-    });
-
-
-    
-    if(chatContent.children.length < 2) {
-        displayStartMessage();
-    }
-    
-}
 
 
 
@@ -2966,19 +1145,6 @@ let messages_cache = {};
 let guildChatMessages = {};
 let messages_raw_cache = {};
 
-function handleReplies() {
-    console.log(reply_cache);
-    Object.values(reply_cache).forEach(message => {
-        const replierElements = Array.from(chatContent.children).filter(element => element.dataset.reply_to_id == message.message_id);
-        console.log(replierElements, message.replies);
-        replierElements.forEach(replier => {
-            message.replies.forEach(msg => {
-                createReplyBar(replier, message.message_id, msg.user_id, msg.content, msg.attachment_urls);
-                console.log("Creating replly bar.", replier, message.message_id, msg.user_id, msg.content);
-            });
-        });
-    });
-}
 
 socket.on('bulk_reply_response', data => {
     const replies = data.bulk_replies;
@@ -3028,42 +1194,7 @@ socket.on('update_channels', data => {
 
 });
 
-function removeChannel(data) {
-    let cachedChannels = channels_cache[data.guild_id];
-    let channelsArray = [];
 
-    if (cachedChannels) {
-        channelsArray = JSON.parse(cachedChannels);
-        channelsArray = channelsArray.filter(channel => channel.channel_id !== data.channel_id);
-        channels_cache[data.guild_id] = JSON.stringify(channelsArray);
-    }
-
-    currentChannels = channelsArray;
-    removeChannelElement(data.channel_id);
-    if(currentChannelId == data.channel_id) {
-        const channelsArray = JSON.parse(channels_cache[currentGuildId])
-        const firstChannel = channelsArray[0].channel_id;
-        loadGuild(currentGuildId,firstChannel)
-    }
-}
-
-function editChannel(data) {
-    let cachedChannels = channels_cache[data.guild_id];
-    let channelsArray = [];
-
-    if (cachedChannels) {
-        channelsArray = JSON.parse(cachedChannels);
-        channelsArray.forEach((channel, index) => {
-            if (channel.channel_id === data.channel_id) {
-                editChannelElement(channel.channel_id,channel.channel_name);
-            }
-        });
-    } else {
-        channelsArray = [];
-    }
-
-    currentChannels = channelsArray;
-}
 socket.on('channel_update', data => {
     if (!data) return;
     const updateType = data.type;
@@ -3098,8 +1229,9 @@ socket.on('update_users_metadata', data => {
 
 
 function updateUserOnlineStatus(userId, isOnline) {
+    if(userId == currentUserId) {return; }
     for (const guild_id in guild_users_cache) {
-        if (userId != currentUserId && guild_users_cache.hasOwnProperty(guild_id)) {
+        if (guild_users_cache.hasOwnProperty(guild_id)) {
             const users = guild_users_cache[guild_id];
             for (const userKey in users) {
                 if (users.hasOwnProperty(userKey)) {

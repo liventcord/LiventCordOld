@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, send_file,redirect, url_for,session, make_response
+from flask import Flask, render_template, request, jsonify, send_file,redirect, url_for,session, make_response,Response,stream_with_context
 from flask_socketio import SocketIO, emit
 from flask_httpauth import HTTPBasicAuth
 from uuid import uuid4
@@ -10,7 +10,9 @@ from pytz import utc as UTC
 from werkzeug.utils import secure_filename
 from sqlite3 import IntegrityError
 from io import BytesIO
+from pytube import YouTube
 import os,json,signal,wave,time,requests
+import yt_dlp
 from limiter import Limiter
 if is_using_pg:
     from db_classes.db_handler import postgres_manager
@@ -59,6 +61,8 @@ def get_emojis():
     with open('emoji.json', 'r', encoding='utf-8') as f:
         emojis = json.load(f)
     return jsonify(emojis)
+
+
 
 
 #@app.route('/shutdown', methods=['GET'])
@@ -111,6 +115,30 @@ def get_guild_messages_manager(guild_id):
     return guild_messages_managers[guild_id]
 
 
+def generate_audio(video_id):
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'quiet': True,
+        'noplaylist': True,
+    }
+
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
+            audio_url = info['url']
+
+        with requests.get(audio_url, stream=True) as r:
+            r.raise_for_status()
+            for chunk in r.iter_content(chunk_size=1024):
+                if chunk:
+                    yield chunk
+    except Exception as e:
+        print(f"Error: {e}")
+        yield b""
+
+@app.route('/stream/<video_id>')
+def stream_audio(video_id):
+    return Response(stream_with_context(generate_audio(video_id)), content_type='audio/mpeg')
 
             
 
@@ -228,33 +256,11 @@ def get_app_page(friend_id=None,guild_id=None, channel_id=None,guild_name=None,a
         context['friend_name'] = friendname
         context['friend_blocked'] = is_user_blocked(user_id, friend_id)
 
-    settings_html = render_template('settings.html', **context)
+    index = render_template('index.html', **context)
     
-    combined_html = friend_html + settings_html
+    combined_html = friend_html + index
     return combined_html
 
-
-
-
-
-@socketio.on('get_ytmp3')
-def ytmp3(data):
-    url = data.get('url')
-    if not url: return 
-
-    body = f'{{"url":"{url}","isAudioOnly":true,"filenamePattern":"pretty"}}'
-
-    apiurl = 'https://cnvmp3.com/fetch.php'
-
-    try:
-        response = requests.post(apiurl, data=body, headers={'Content-Type': 'application/json'})  # Sending POST request with JSON body
-        response.raise_for_status()
-        output = response.json()
-        emit('mp3yt_response', {'url': output.get('url')})  # Assuming output contains 'url'
-
-    except requests.RequestException as e:
-        print(f"Request failed: {e}")
-        emit('mp3yt_response', {'error': 'Request failed.'})  # Emit error back to client
 
 
 
@@ -1220,11 +1226,13 @@ def get_history(data):
             # Convert any datetime fields in msg_dict to ISO format
             for key, value in msg_dict.items():
                 if isinstance(value, datetime):
-                    msg_dict[key] = value.isoformat()
+                    msg_dict[key] = value.isoformat()  # Convert datetime to ISO format
+                elif isinstance(value, list):  # If value is a list, serialize each item
+                    msg_dict[key] = [v.isoformat() if isinstance(v, datetime) else v for v in value]
             return msg_dict
         else:
             return msg
-    
+
     history = [serialize_message(msg) for msg in history]
 
     # Convert oldest_message_date to ISO format if it's a datetime object

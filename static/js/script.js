@@ -1,4 +1,4 @@
-function getId(string) { return document.getElementById(string);}
+
 let isDomLoaded = false;
 let chatContainer;
 let chatContent;
@@ -52,49 +52,47 @@ let currentCustomEmojis = [];
 function getEmojiPath(emojiName) {   return `${baseImagePath}${emojiName}.png`; }
 
 let lastSenderID = '';
-
+let typingTimeout;
 let currentChannelName = null;
 let currentReplyingTo = '';
-const Overview = 'Overview';
-const Roles = 'Roles';
-const Emoji = 'Emoji';
-const Invites = 'Invites';
-const DeleteGuild = 'Delete Guild';
 
 
-const textChanHtml = '<svg class="icon_d8bfb3" aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M10.99 3.16A1 1 0 1 0 9 2.84L8.15 8H4a1 1 0 0 0 0 2h3.82l-.67 4H3a1 1 0 1 0 0 2h3.82l-.8 4.84a1 1 0 0 0 1.97.32L8.85 16h4.97l-.8 4.84a1 1 0 0 0 1.97.32l.86-5.16H20a1 1 0 1 0 0-2h-3.82l.67-4H21a1 1 0 1 0 0-2h-3.82l.8-4.84a1 1 0 1 0-1.97-.32L15.15 8h-4.97l.8-4.84ZM14.15 14l.67-4H9.85l-.67 4h4.97Z" clip-rule="evenodd" class=""></path></svg>'
-const voiceChanHtml = '<svg class="icon_d8bfb3" aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3a1 1 0 0 0-1-1h-.06a1 1 0 0 0-.74.32L5.92 7H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h2.92l4.28 4.68a1 1 0 0 0 .74.32H11a1 1 0 0 0 1-1V3ZM15.1 20.75c-.58.14-1.1-.33-1.1-.92v-.03c0-.5.37-.92.85-1.05a7 7 0 0 0 0-13.5A1.11 1.11 0 0 1 14 4.2v-.03c0-.6.52-1.06 1.1-.92a9 9 0 0 1 0 17.5Z" class=""></path><path fill="currentColor" d="M15.16 16.51c-.57.28-1.16-.2-1.16-.83v-.14c0-.43.28-.8.63-1.02a3 3 0 0 0 0-5.04c-.35-.23-.63-.6-.63-1.02v-.14c0-.63.59-1.1 1.16-.83a5 5 0 0 1 0 9.02Z" class=""></path></svg>'
+let currentUserId;
+let currentDiscriminator = null;
+let currentUserName;
+let currentChannelId;
+let currentVoiceChannelId;
+let lastConfirmedProfileImg;
+let currentGuildName = '';
+let currentGuildIndex = 0;
+let userNames = {};
+userNames['1'] = {
+    nick: 'Clyde',
+    discriminator: '0000',
+    is_blocked: false
+};
 
-const inviteHtml = '<svg class="actionIcon_f6f816" aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"><path fill="currentColor" d="M14.5 8a3 3 0 1 0-2.7-4.3c-.2.4.06.86.44 1.12a5 5 0 0 1 2.14 3.08c.01.06.06.1.12.1ZM16.62 13.17c-.22.29-.65.37-.92.14-.34-.3-.7-.57-1.09-.82-.52-.33-.7-1.05-.47-1.63.11-.27.2-.57.26-.87.11-.54.55-1 1.1-.92 1.6.2 3.04.92 4.15 1.98.3.27-.25.95-.65.95a3 3 0 0 0-2.38 1.17ZM15.19 15.61c.13.16.02.39-.19.39a3 3 0 0 0-1.52 5.59c.2.12.26.41.02.41h-8a.5.5 0 0 1-.5-.5v-2.1c0-.25-.31-.33-.42-.1-.32.67-.67 1.58-.88 2.54a.2.2 0 0 1-.2.16A1.5 1.5 0 0 1 2 20.5a7.5 7.5 0 0 1 13.19-4.89ZM9.5 12a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM15.5 22Z" class=""></path><path fill="currentColor" d="M19 14a1 1 0 0 1 1 1v3h3a1 1 0 0 1 0 2h-3v3a1 1 0 0 1-2 0v-3h-3a1 1 0 1 1 0-2h3v-3a1 1 0 0 1 1-1Z" class=""></path></svg>';
-const settingsHtml = '<svg class="actionIcon_f6f816" aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M10.56 1.1c-.46.05-.7.53-.64.98.18 1.16-.19 2.2-.98 2.53-.8.33-1.79-.15-2.49-1.1-.27-.36-.78-.52-1.14-.24-.77.59-1.45 1.27-2.04 2.04-.28.36-.12.87.24 1.14.96.7 1.43 1.7 1.1 2.49-.33.8-1.37 1.16-2.53.98-.45-.07-.93.18-.99.64a11.1 11.1 0 0 0 0 2.88c.06.46.54.7.99.64 1.16-.18 2.2.19 2.53.98.33.8-.14 1.79-1.1 2.49-.36.27-.52.78-.24 1.14.59.77 1.27 1.45 2.04 2.04.36.28.87.12 1.14-.24.7-.95 1.7-1.43 2.49-1.1.8.33 1.16 1.37.98 2.53-.07.45.18.93.64.99a11.1 11.1 0 0 0 2.88 0c.46-.06.7-.54.64-.99-.18-1.16.19-2.2.98-2.53.8-.33 1.79.14 2.49 1.1.27.36.78.52 1.14.24.77-.59 1.45-1.27 2.04-2.04.28-.36.12-.87-.24-1.14-.96-.7-1.43-1.7-1.1-2.49.33-.8 1.37-1.16 2.53-.98.45.07.93-.18.99-.64a11.1 11.1 0 0 0 0-2.88c-.06-.46-.54-.7-.99-.64-1.16.18-2.2-.19-2.53-.98-.33-.8.14-1.79 1.1-2.49.36-.27.52-.78.24-1.14a11.07 11.07 0 0 0-2.04-2.04c-.36-.28-.87-.12-1.14.24-.7.96-1.7 1.43-2.49 1.1-.8-.33-1.16-1.37-.98-2.53.07-.45-.18-.93-.64-.99a11.1 11.1 0 0 0-2.88 0ZM16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z" clip-rule="evenodd" class=""></path></svg>';
-const muteHtml = '<svg class="icon_cdc675" aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"><path fill="currentColor" d="m2.7 22.7 20-20a1 1 0 0 0-1.4-1.4l-20 20a1 1 0 1 0 1.4 1.4ZM10.8 17.32c-.21.21-.1.58.2.62V20H9a1 1 0 1 0 0 2h6a1 1 0 1 0 0-2h-2v-2.06A8 8 0 0 0 20 10a1 1 0 0 0-2 0c0 1.45-.52 2.79-1.38 3.83l-.02.02A5.99 5.99 0 0 1 12.32 16a.52.52 0 0 0-.34.15l-1.18 1.18ZM15.36 4.52c.15-.15.19-.38.08-.56A4 4 0 0 0 8 6v4c0 .3.03.58.1.86.07.34.49.43.74.18l6.52-6.52ZM5.06 13.98c.16.28.53.31.75.09l.75-.75c.16-.16.19-.4.08-.61A5.97 5.97 0 0 1 6 10a1 1 0 0 0-2 0c0 1.45.39 2.81 1.06 3.98Z" class=""></path></svg>';
-const inviteVoiceHtml = '<svg class="icon_cdc675" aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"><path fill="currentColor" d="M13 3a1 1 0 1 0-2 0v8H3a1 1 0 1 0 0 2h8v8a1 1 0 0 0 2 0v-8h8a1 1 0 0 0 0-2h-8V3Z" class=""></path></svg>';
+let currentEscHandler;
+let isOnMe = true;
+let isOnDm = false;
 
-const selectedChanColor = 'rgb(64, 66, 73)';
-const hoveredChanColor = 'rgb(53, 55, 60';
+let cachedFriMenuContent;
+let userListFriActiveHtml;
+
+let contextList = {};
+let messageContextList = {};
+
+let channels_cache = {}; // <guild_id> <channels_list>
+let guild_users_cache = {}; // <guild_id> <users_list>
+let users_metadata_cache = {}; // <guild_id> 
+
+let usersInVoice = {};
+let readenMessagesCache = {};
+let guildAuthorIds = {};
+
 let permissionManager;
-class PermissionManager {
-    constructor(permissionsMap, currentGuildId) {
-        this.permissionsMap = permissionsMap;
-        this.currentGuildId = currentGuildId;
-    }
 
-    getPermission(permType) {
-        return this.permissionsMap[this.currentGuildId]?.[permType] || 0;
-    }
 
-    canInvite() {
-        return Boolean(this.getPermission(Permission.CAN_INVITE));
-    }
-
-    canManageChannels() {
-        return Boolean(this.getPermission(Permission.MANAGE_CHANNELS));
-    }
-
-    isSelfAdmin() {
-        return Boolean(this.getPermission(Permission.IS_ADMIN));
-    }
-}
 
 
 
@@ -121,20 +119,65 @@ const observer = new IntersectionObserver((entries, observer) => {
     });
 }, { threshold: 0.1 });
 
+class PermissionManager {
+    constructor(permissionsMap, currentGuildId) {
+        this.permissionsMap = permissionsMap;
+        this.currentGuildId = currentGuildId;
+    }
+
+    getPermission(permType) {
+        return this.permissionsMap[this.currentGuildId]?.[permType] || 0;
+    }
+
+    canInvite() {
+        return Boolean(this.getPermission(Permission.CAN_INVITE));
+    }
+
+    canManageChannels() {
+        return Boolean(this.getPermission(Permission.MANAGE_CHANNELS));
+    }
+    
+    isSelfAdmin() {
+        return Boolean(this.getPermission(Permission.IS_ADMIN));
+    }
+}
+function getId(string) { return document.getElementById(string);}
+
+function reloadCSS() {
+    const approvedDomains = ['localhost'];
+    function getDomain(url) {
+        const link = createEl('a');
+        link.href = url;
+        return link.hostname;
+    }
+    const links = document.getElementsByTagName('link');
+    for (let i = 0; i < links.length; i++) {
+        const link = links[i];
+        if (link.rel === 'stylesheet') {
+            const href = link.href;
+            const domain = getDomain(href);
+            if (approvedDomains.includes(domain)) {
+                const newHref = href.indexOf('?') !== -1 ? `${href}&_=${new Date().getTime()}` : `${href}?_=${new Date().getTime()}`;
+                link.href = newHref;
+            }
+        }
+    }
+}
+
+//window.addEventListener('focus', reloadCSS);
+
+
 function onFocusInput() {
-    const dropdown = document.getElementById('search-dropdown');
+    const dropdown = getId('search-dropdown');
     dropdown.classList.remove('hidden');
     inputElement.style.width = '225px'; 
 }
 
 
 function onBlurInput() {
-    
     return;
-    const inputElement = document.getElementById('channelSearchInput');
-    const dropdown = document.getElementById('search-dropdown');
-    
-
+    const inputElement = getId('channelSearchInput');
+    const dropdown = getId('search-dropdown');
     document.addEventListener('click', (event) => {
         if (!event.target.closest('.search-container')) {
             dropdown.classList.add('hidden');
@@ -183,684 +226,36 @@ function getGuildUsers() {
     return usersToReturn; 
 }
 
-function filterUsers(query) {
-    const userSection = getId('userSection').querySelector('.search-content');
-    const mentioningSection = getId('mentioningSection').querySelector('.search-content');
-    const channelSection = getId('channelSection').querySelector('.search-content');
-    const dateSection1 = getId('dateSection1').querySelector('.search-content');
-    const dateSection2 = getId('dateSection2').querySelector('.search-content');
-    const dateSection3 = getId('dateSection3').querySelector('.search-content');
-
-    userSection.innerHTML = '';
-    mentioningSection.innerHTML = '';
-    channelSection.innerHTML = '';
-    dateSection1.innerHTML = '';
-    dateSection2.innerHTML = '';
-    dateSection3.innerHTML = '';
-
-    const users = getGuildUsers(); 
-    if (!users) return;
-
-    const filteredUsers = users.filter(user => user.name.toLowerCase().startsWith(query.toLowerCase())).slice(0, 3);
-
-    filteredUsers.forEach(user => {
-        userSection.innerHTML += `<div class=".search-button" onclick="handleUserClick('${user.name}')">
-            <img src="${user.image}" alt="${user.name}" style="width: 20px; height: 20px; border-radius: 50%;"> ${user.name}
-        </div>`;
-        mentioningSection.innerHTML += `<div class=".search-button" onclick="handleUserClick('${user.name}')">
-            Mentioning: <img src="${user.image}" alt="${user.name}" style="width: 20px; height: 20px; border-radius: 50%;"> ${user.name}
-        </div>`;
-    });
-
-    if(currentChannels) {
-        currentChannels.forEach(channel => {
-            channelSection.innerHTML += `<div class=".search-button">${channel.channel_name}</div>`;
-        });
-    }
-
-    const monthValue = getMonthValue(query);
-    dateSection1.innerHTML += `<div class=".search-button">Before this date: ${monthValue}</div>`;
-    dateSection2.innerHTML += `<div class=".search-button">During this date: ${monthValue}</div>`;
-    dateSection3.innerHTML += `<div class=".search-button">After this date: ${monthValue}</div>`;
-}
 
 
-function getMonthValue(query) {
-    if (query.length === 0) return ['Not Specified'];
-
-    const lowerCaseQuery = query.toLowerCase();
-    
-    const months = [
-        'January',   // J
-        'February',  // F
-        'March',     // M
-        'April',     // A
-        'May',       // M
-        'June',      // J
-        'July',      // J
-        'August',    // A
-        'September', // S
-        'October',   // O
-        'November',  // N
-        'December'   // D
-    ];
-
-    const matchingMonths = months.filter(month => month.toLowerCase().startsWith(lowerCaseQuery));
-
-    return matchingMonths.length > 0 ? matchingMonths : ['Not Specified'];
-}
 
 
-function displayDefaultContent() {
-    const userSection = getId('userSection').querySelector('.search-content');
-    const mentioningSection = getId('mentioningSection').querySelector('.search-content');
-    const channelSection = getId('channelSection').querySelector('.search-content');
-    const dateSection1 = getId('dateSection1').querySelector('.search-content');
-    const dateSection2 = getId('dateSection2').querySelector('.search-content');
-    const dateSection3 = getId('dateSection3').querySelector('.search-content');
 
-    userSection.innerHTML = '<div class="button">No users found</div>';
-    mentioningSection.innerHTML = '<div class="button">No mentions found</div>';
-    channelSection.innerHTML = '<div class="button">Channel 1</div><div class="button">Channel 2</div><div class="button">Channel 3</div>';
-    dateSection1.innerHTML = '<div class="button">Before this date: Not Specified</div><div class="button">During this date: Not Specified</div><div class="button">After this date: Not Specified</div>';
-    dateSection2.innerHTML = '<div class="button">Before this date: Not Specified</div><div class="button">During this date: Not Specified</div><div class="button">After this date: Not Specified</div>';
-    dateSection3.innerHTML = '<div class="button">Before this date: Not Specified</div><div class="button">During this date: Not Specified</div><div class="button">After this date: Not Specified</div>';
-}
-
-function handleUserClick(userName) {
-    alert(`User ${userName} clicked!`);
+function joinToGuild(invite_id) {
+    socket.emit('join_to_guild',{'invite_id':invite_id});
 }
 
 
 
 
-function replaceCustomEmojis(message) {
-    if(message) {
-        const regex = /<:([^:>]+):(\d+)>/g;
-        let message1 = message.replace(regex, (match, emojiName, emojiId) => {
-            if (currentCustomEmojis.hasOwnProperty(emojiName)) {
-                return `<img src="${getEmojiPath(currentCustomEmojis[emojiName])}" alt="${emojiName}" style="width: 64px; height: 38px; vertical-align: middle;" />`;
-            } else {
-                return match;
-            }
-        });
-        return message1;
-    }
-    return message
-
-}
-function checkStringFormat(str) {
-    const pattern = /^\/app\/channels\/\d+\/\d+$/;
-    const isPatternApp = pattern.test(str);
-    const isPatternMe = pattern == '/me';
-    return isPatternApp || isPatternMe;
-}
-
-function scrollToBottom() {
-    chatContainer.scrollTop = chatContainer.scrollHeight;
-}
-function isChannelMatching(channel_id,isTextChannel) {
-    if(isTextChannel) {
-        return currentChannelId == channel_id;
-    } else {
-        return currentVoiceChannelId == channel_id;
-    }
-}
-
-function mouseHoverChannelButton(channelButton,isTextChannel,channel_id) {
-    if(!channelButton) { return; }
-    const contentWrapper = channelButton.querySelector('.content-wrapper');
-
-
-    contentWrapper.style.display = 'flex';
-    if(isTextChannel) {
-        channelButton.style.backgroundColor = isChannelMatching(channel_id,isTextChannel) ? selectedChanColor : hoveredChanColor;
-    } else {
-        channelButton.style.backgroundColor = hoveredChanColor;
-    }
-    channelButton.style.color = 'white';
-}
-function hashChildElements(channelButton) {
-    return channelButton.querySelector('.channel-users-container') != null;
-}
-function mouseLeaveChannelButton(channelButton,isTextChannel,channel_id) {
-    if(!channelButton) { return; }
-    const contentWrapper = channelButton.querySelector('.content-wrapper');
-    const channelSpan = channelButton.querySelector('.channelSpan');
-
-
-
-    if(channelSpan && !isTextChannel) {
-        channelSpan.style.marginRight = hashChildElements(channelButton) ? '30px' : '100px';
-    }
-    if(contentWrapper) {
-        if(!isTextChannel) {
-            if(currentVoiceChannelId == channel_id) {
-                contentWrapper.style.display = 'flex';
-            } else {
-                contentWrapper.style.display = 'none';
-            }
-            
-        }  else {
-            contentWrapper.style.display = 'none';
-            
-        }
-    }
-    if(isTextChannel) {
-        channelButton.style.backgroundColor = isChannelMatching(channel_id,isTextChannel) ? selectedChanColor : 'transparent';
-    } else {
-        channelButton.style.backgroundColor = 'transparent';
-        
-    }
-    channelButton.style.color = isChannelMatching(channel_id,isTextChannel) ? 'white' : 'rgb(148, 155, 164)';
-}
-function handleKeydown(event) {
-    if (isKeyDown || isOnMe) return;
-    currentChannels.forEach((channel, index) => {
-        let hotkey = index < 9 ? (index + 1).toString() : (index === 9 ? '0' : null);
-        if (hotkey && event.key === hotkey && event.altKey) {
-            changeChannel(channel);
-        }
-    });
-    if (event.altKey) { 
-        if (event.key === "ArrowUp") {
-            moveChannel(-1);
-        } else if (event.key === "ArrowDown") {
-            moveChannel(1);
-        }
-    }
-    isKeyDown = true;
-}
-function editChannelElement(channel_id, new_channel_name) {
-    const existingChannelButton = channelsUl.querySelector(`li[id="${channel_id}"]`);
-    if (!existingChannelButton) { return; }
-    existingChannelButton.querySelector('channelSpan').textContent = new_channel_name;
-}
-function removeChannelElement(channel_id) {
-    const existingChannelButton = channelsUl.querySelector(`li[id="${channel_id}"]`);
-    if (!existingChannelButton) { return; }
-    existingChannelButton.remove();
-}
-function createChannelElement(channel) {
-    const channel_id = channel.channel_id;
-    const channel_name = channel.channel_name;
-    const isTextChannel = channel.is_text_channel;
-    const last_read_datetime = channel.last_read_datetime;
-    const existingChannelButton = channelsUl.querySelector(`li[id="${channel_id}"]`);
-    if (existingChannelButton) { return; }
-    const htmlToSet = isTextChannel ? textChanHtml : voiceChanHtml;
-    const channelButton = createEl('li', { className: 'channel-button', id: channel_id });
-    channelButton.style.marginLeft = '-80px';
-
-    const contentWrapper = createEl('div', { className: 'content-wrapper'});
-    contentWrapper.style.display = 'none';
-    const hashtagSpan = createEl('span', { innerHTML: htmlToSet, marginLeft: '50px' });
-    hashtagSpan.style.color = 'rgb(128, 132, 142)';
-    const channelSpan = createEl('span', { className: 'channelSpan', textContent: channel_name, });
-    channelSpan.style.marginRight = '30px';
-    channelSpan.style.width = '100%';
-    channelButton.style.width = '70%';
-    contentWrapper.style.marginRight = '100px';
-    contentWrapper.style.marginTop = '4px';
-    const settingsSpan = createEl('span', { innerHTML: settingsHtml });
-    settingsSpan.addEventListener('click', () => {
-        console.log("Click to settings on:", channel_name);
-    })
-    if(isSelfAuthor()) {
-        const inviteSpan = createEl('span', { innerHTML: inviteHtml });
-        inviteSpan.addEventListener('click', () => {
-            console.log("Click to invite on:", channel_name);
-        })
-        contentWrapper.appendChild(inviteSpan);
-    }
-    contentWrapper.appendChild(settingsSpan);
-    channelButton.appendChild(hashtagSpan);
-    channelButton.appendChild(channelSpan);
-    channelButton.appendChild(contentWrapper);
-    appendToChannelContextList(channel_id);
-    channelsUl.appendChild(channelButton);
-
-    channelButton.addEventListener('mouseover', function(event) {
-        if(event.target.id == channel_id) {
-            mouseHoverChannelButton(channelButton, isTextChannel,channel_id);
-        }
-    });
-    channelButton.addEventListener('mouseleave', function(event) {
-        if(event.target.id == channel_id) {
-            mouseLeaveChannelButton(channelButton, isTextChannel,channel_id);
-        }
-    });
-    mouseLeaveChannelButton(channelButton, isTextChannel,channel_id);
-    channelButton.addEventListener('click', function() {
-        changeChannel(channel);
-    });
-
-    if (channel_id == currentChannelId) {
-        changeChannel(channel);
-    }
-
-
-}
-function resetKeydown() {
-    isKeyDown = false;
-}
-
-function addChannel(channel) {
-    console.log(typeof(channel), channel);
-    currentChannels.push(channel);
-
-    let guildChannels = channels_cache[channel.guild_id] ? JSON.parse(channels_cache[channel.guild_id]) : [];
-    guildChannels.push(channel);
-    channels_cache[channel.guild_id] = JSON.stringify(guildChannels);
-    
-    document.removeEventListener('keydown', handleKeydown);
-    document.removeEventListener('keyup', resetKeydown);
-    createChannelElement(channel);
-    if (currentChannels.length > 1) {
-        document.addEventListener('keydown', handleKeydown);
-        document.addEventListener('keyup', resetKeydown);
-    }
-}
-function updateChannels(channels) {
-    if (channels == null) { return; }
-    let channelsArray;
-    try {
-        channelsArray = JSON.parse(channels);
-    } catch (error) {
-        console.error("Error parsing channels JSON:", error);
-        return;
-    }
-    if (!Array.isArray(channelsArray) || channelsArray.length === 0) {
-        console.log("Channels format is not recognized. Type: " + typeof channelsArray + channelsArray);
-        return;
-    }
-    channelsUl.innerHTML = "";
-    if(!isOnMe) {
-        disableElement('dm-container-parent');
-    }
-    document.removeEventListener('keydown', handleKeydown);
-    document.removeEventListener('keyup', resetKeydown);
-    channelsArray.forEach((channel) => {
-        createChannelElement(channel);
-    });
-    currentChannels = channelsArray;
-    if (currentChannels.length > 1) {
-        document.addEventListener('keydown', handleKeydown);
-        document.addEventListener('keyup', resetKeydown);
-    }
-}
-
-let isKeyDown = false;
-let currentChannelIndex = 0;
-function moveChannel(direction) {
-    let newIndex = currentChannelIndex + direction;
-    if (newIndex < 0) {
-        newIndex = currentChannels.length - 1;
-    }
-    else if (newIndex >= currentChannels.length) {
-        newIndex = 0;
-    }
-    changeChannel(currentChannels[newIndex]);
-    currentChannelIndex = newIndex; 
-}
-
-
-
-
-function createChannelsPop() {
-    let isTextChannel = true;
-    const newPopOuterParent = createEl('div',{className: 'outer-parent'});
-    const newPopParent = createEl('div',{className:'pop-up',id:'createChannelPopContainer'});
-    const title = `Kanal Oluştur`
-    const sendText = "Sadece seçilen üyeler ve roller bu kanalı görüntüleyebilir.";
-
-    const inviteTitle = createEl('p',{id:'create-channel-title', textContent:title});
-    const popBottomContainer = createEl('div',{className:'popup-bottom-container',id:'create-channel-popup-bottom-container'});
-    const sendInvText = createEl('p',{id:'create-channel-send-text', textContent:sendText});
-    const closeBtn = createEl('button',{className:'popup-close', id:"invite-close-button",textContent:'X'});
-    const newChannelPlaceHolder = 'yeni-kanal';
-    const inviteUsersSendInput = createEl('input',{id:"create-channel-send-input",placeholder:newChannelPlaceHolder});
-    inviteUsersSendInput.addEventListener('input', () => {
-        const inputValue = inviteUsersSendInput.value.trim();
-        toggleButtonState(inputValue !== ''); 
-    });
-
-    const channeltypetitle = createEl('p',{id:'create-channel-type', textContent:'KANAL TÜRÜ'});
-
-    const hashText = `<svg class="icon_b545d5" aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="currentColor" fill-rule="evenodd" d="M10.99 3.16A1 1 0 1 0 9 2.84L8.15 8H4a1 1 0 0 0 0 2h3.82l-.67 4H3a1 1 0 1 0 0 2h3.82l-.8 4.84a1 1 0 0 0 1.97.32L8.85 16h4.97l-.8 4.84a1 1 0 0 0 1.97.32l.86-5.16H20a1 1 0 1 0 0-2h-3.82l.67-4H21a1 1 0 1 0 0-2h-3.82l.8-4.84a1 1 0 1 0-1.97-.32L15.15 8h-4.97l.8-4.84ZM14.15 14l.67-4H9.85l-.67 4h4.97Z" clip-rule="evenodd" class="foreground_b545d5"></path></svg>`
-    const voiceText = `<svg class="icon_b545d5" aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path fill="currentColor" d="M12 3a1 1 0 0 0-1-1h-.06a1 1 0 0 0-.74.32L5.92 7H3a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h2.92l4.28 4.68a1 1 0 0 0 .74.32H11a1 1 0 0 0 1-1V3ZM15.1 20.75c-.58.14-1.1-.33-1.1-.92v-.03c0-.5.37-.92.85-1.05a7 7 0 0 0 0-13.5A1.11 1.11 0 0 1 14 4.2v-.03c0-.6.52-1.06 1.1-.92a9 9 0 0 1 0 17.5Z" class="foreground_b545d5"></path><path fill="currentColor" d="M15.16 16.51c-.57.28-1.16-.2-1.16-.83v-.14c0-.43.28-.8.63-1.02a3 3 0 0 0 0-5.04c-.35-.23-.63-.6-.63-1.02v-.14c0-.63.59-1.1 1.16-.83a5 5 0 0 1 0 9.02Z" class="foreground_b545d5"></path></svg>`;
-    const channeltypetexticon = createEl('p',{id:'channel-type-icon',innerHTML:hashText});
-    const channeltypevoiceicon = createEl('p',{id:'channel-type-icon',innerHTML:voiceText });
-    const channeltypetexttitle = createEl('p',{id:'channel-type-title',textContent:'Metin'});
-    const channeltypevoicetitle = createEl('p',{id:'channel-type-title',textContent:'Ses'});
-    const channeltypetextdescription = createEl('p',{id:'channel-type-description',textContent:"Mesajlar, resimler, GIF'ler, emojiler, fikirler ve şakalar gönder"});
-    const channeltypevoicedescription = createEl('p',{id:'channel-type-description',textContent:"Birlikte sesli veya görüntülü konuşun veya ekran paylaşın"});
-    const channelnametitle = createEl('p',{id:'create-channel-name', textContent:'KANAL ADI'});
-    const channelIcon = createEl('p',{id:'channel-icon',textContent:'#'});
-    
-    const textChannelContainer = createEl('div',{id:'create-channel-text-type'});
-    const textChannelTitle = createEl('p',{id:'text-channel-title'});
-    const voiceChannelTitle = createEl('p',{id:'voice-channel-title'});
-    const voiceChannelContainer = createEl('div',{id:'create-channel-voice-type'});
-    
-    const specialchanHtml = `<svg class="switchIcon_b545d5" aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"><path fill="lightgray" fill-rule="evenodd" d="M6 9h1V6a5 5 0 0 1 10 0v3h1a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3v-8a3 3 0 0 1 3-3Zm9-3v3H9V6a3 3 0 1 1 6 0Zm-1 8a2 2 0 0 1-1 1.73V18a1 1 0 1 1-2 0v-2.27A2 2 0 1 1 14 14Z" clip-rule="evenodd" class=""></path></svg>`;
-    const specialChanIcon = createEl('div',{innerHTML:specialchanHtml,id:'special-channel-icon'});
-    const specialChanText = createEl('div',{id:'special-channel-text', textContent:'Özel Kanal'  });
-    const specialChanToggle = createEl('toggle',{id:'special-channel-text'});
-    textChannelContainer.style.filter = 'brightness(1.5)';
-    voiceChannelContainer.style.filter = 'brightness(1)';
-
-    textChannelContainer.addEventListener('click', function() {
-        isTextChannel = true;
-        textChannelContainer.style.filter = 'brightness(1.5)';
-        voiceChannelContainer.style.filter = 'brightness(1)';
-    });
-    
-    voiceChannelContainer.addEventListener('click', function() {
-        isTextChannel = false;
-        textChannelContainer.style.filter = 'brightness(1)';
-        voiceChannelContainer.style.filter = 'brightness(1.5)';
-    });
-
-    const popAcceptButton = createEl('button', {className: 'pop-up-accept',textContent:'Kanal Oluştur',style:"height:40px; width: 25%; top:93%;  left: 84%; font-size:14px; disabled=1; white-space:nowrap;"});
-    popAcceptButton.addEventListener('click', function() {
-        const inviteUsersSendInput = getId('create-channel-send-input');
-        let newchanname = inviteUsersSendInput.value.replace(/^\s+/, '');;
-        
-        if (!newchanname) {
-            newchanname = newChannelPlaceHolder;
-        }
-        const data = {
-            'channel_name': newchanname,
-            'guild_id': currentGuildId,
-            'is_text_channel': isTextChannel
-        };
-        
-        socket.emit('create_channel', data);
-        isTextChannel = true;
-        closePopUp(newPopOuterParent, newPopParent);
-    });
-    function toggleButtonState(isActive) {
-        if (isActive) {
-            popAcceptButton.classList.remove('inactive');
-            popAcceptButton.classList.add('active');
-        } else {
-            popAcceptButton.classList.remove('active');
-            popAcceptButton.classList.add('inactive');
-        }
-    }
-    const popRefuseButton =  createEl('button', {className: 'pop-up-refuse',textContent:'İptal', style:"top: 93%; left:61%; font-size:14px;" });
-    popRefuseButton.addEventListener('click',function(){
-        isTextChannel = true;
-        closePopUp(newPopOuterParent, newPopParent);
-    });
-    newPopParent.appendChild(specialChanIcon);
-    newPopParent.appendChild(popAcceptButton);
-    newPopParent.appendChild(specialChanText);
-    newPopParent.appendChild(specialChanToggle);
-
-    newPopParent.appendChild(popRefuseButton);
-
-    textChannelContainer.appendChild(channeltypetexticon);
-    voiceChannelContainer.appendChild(channeltypevoiceicon);
-
-    textChannelContainer.appendChild(channeltypetexttitle);
-    textChannelContainer.appendChild(channeltypetextdescription);
-    voiceChannelContainer.appendChild(channeltypevoicetitle);
-    voiceChannelContainer.appendChild(channeltypevoicedescription);
-
-    newPopParent.appendChild(closeBtn);
-    newPopParent.appendChild(inviteTitle);
-
-    newPopParent.appendChild(channeltypetitle);
-    newPopParent.appendChild(channelnametitle);
-    newPopParent.appendChild(channelIcon);
-    
-    const centerWrapper = createEl('div',{id:'center-wrapper'});
-    centerWrapper.appendChild(textChannelTitle);
-    centerWrapper.appendChild(voiceChannelTitle);
-    newPopParent.appendChild(centerWrapper);
-
-    newPopParent.append(textChannelContainer );
-    newPopParent.append(voiceChannelContainer );
-    
-    popBottomContainer.appendChild(sendInvText);
-    popBottomContainer.appendChild(inviteUsersSendInput);
-    newPopParent.appendChild(popBottomContainer);
-    newPopOuterParent.style.display = 'flex';
-    closeBtn.addEventListener('click',function(){
-        closePopUp(newPopOuterParent, newPopParent);
-    });
-    
-    newPopOuterParent.addEventListener('click',function(event){
-        if (event.target === newPopOuterParent) {
-            closePopUp(newPopOuterParent, newPopParent);
-        }
-    });
-
-    newPopOuterParent.appendChild(newPopParent);
-    document.body.appendChild(newPopOuterParent);
-}
 
 function leaveCurrentGuild() {
     socket.emit('leave_from_guild',currentGuildId);
 }
 
-
-function openGuildSettingsDd(event) {
-    const clicked_id = event.target.id;
-    toggleDropdown();
-
-    if ( clicked_id === 'invite-dropdown-button' ) {
-        createInviteUsersPop();
-    }
-    else if ( clicked_id ===  'settings-dropdown-button') {
-        reconstructSettings(true);
-        openSettings(true);
-        selectSettingCategory(Overview);
-    }
-    else if ( clicked_id===  "channel-dropdown-button") {
-        createChannelsPop();
-    }
-    else if (clicked_id ===  "notifications-dropdown-button") {
-        
-    }
-    else if ( clicked_id ===  "exit-dropdown-button") {
-        askUser('Sunucudan ayrıl', 'Sunucudan ayrılmak istediğine emin misin?','Sunucudan ayrıl',leaveCurrentGuild)
-    }
-
-    
+function startGuildJoinCreate() {
+    showGuildPop('Sunucunu Oluştur','Sunucun, arkadaşlarınla takıldığınız yerdir. Kendi sunucunu oluştur ve konuşmaya başla.');
 }
+
 
 const rgbCache = {};
 
 function rgbToHex(r, g, b) {
     return "#" + ((1 << 24) | (r << 16) | (g << 8) | b).toString(16).slice(1).toUpperCase();
 }
-function getAverageRGB(imgEl) {
-    if (imgEl.src === defaultProfileImageUrl) {
-        return '#e7e7e7';
-    }
-
-    const blockSize = 5;
-    const defaultRGB = { r: 0, g: 0, b: 0 };
-    const canvas = document.createElement('canvas');
-    const context = canvas.getContext && canvas.getContext('2d');
-
-    if (!context) {
-        return defaultRGB;
-    }
-
-    // Check if the value is already cached
-    if (rgbCache[imgEl.src]) {
-        return rgbCache[imgEl.src];
-    }
-
-    const height = canvas.height = imgEl.naturalHeight || imgEl.offsetHeight || imgEl.height;
-    const width = canvas.width = imgEl.naturalWidth || imgEl.offsetWidth || imgEl.width;
-
-    context.drawImage(imgEl, 0, 0, width, height);
-
-    let data;
-    try {
-        data = context.getImageData(0, 0, width, height);
-    } catch (e) {
-        return defaultRGB;
-    }
-
-    const length = data.data.length;
-    const rgb = { r: 0, g: 0, b: 0 };
-    let count = 0;
-
-    for (let i = 0; i < length; i += blockSize * 4) {
-        count++;
-        rgb.r += data.data[i];
-        rgb.g += data.data[i + 1];
-        rgb.b += data.data[i + 2];
-    }
-
-    // Calculate the average color
-    rgb.r = ~~(rgb.r / count);
-    rgb.g = ~~(rgb.g / count);
-    rgb.b = ~~(rgb.b / count);
-
-    // Convert the RGB values to a hexadecimal string
-    const rgbString = rgbToHex(rgb.r, rgb.g, rgb.b);
-
-    // Cache the result
-    rgbCache[imgEl.src] = rgbString;
-
-    return rgbString;
-}
-
-function drawProfilePop(userData) {
-    const profileContainer = createEl('div',{id:'profile-container'});
-
-    const discriminator = userData.discriminator;
-    const profileTitle = createEl('p', { id: 'profile-title', textContent: getUserNick(userData.user_id) });
-    const profileDiscriminator = createEl('p', { id: 'profile-discriminator', textContent:'#' + discriminator });
-    profileContainer.appendChild(profileTitle);
-    profileContainer.appendChild(profileDiscriminator);
-    const aboutTitle = createEl('p', { id: 'profile-about-title', textContent: userData.user_id == currentUserId ? 'Hakkımda' : 'Hakkında'});
-    const aboutDescription = createEl('p', { id: 'profile-about-description', textContent: userData.description });
-    const popBottomContainer = createEl('div', { className: 'popup-bottom-container', id: 'profile-popup-bottom-container' });
-    popBottomContainer.appendChild(aboutTitle);
-    popBottomContainer.appendChild(aboutDescription);
-    const popTopContainer = createEl('div', { className: 'popup-bottom-container', id: 'profile-popup-top-container' });
-    const profileOptions = createEl('button',{id:userData.user_id, className:'profile-dots3'});
-    const profileOptionsText = createEl('p',{className:'profile-dots3-text',textContent:'⋯'});
-    profileOptions.appendChild(profileOptionsText);
-    popTopContainer.appendChild(profileOptions);
-    const profileImg = createEl('img',{id:'profile-display', });
-    profileImg.addEventListener("mouseover", function() { this.style.borderRadius = '0px'; });
-    profileImg.addEventListener("mouseout", function() { this.style.borderRadius = '50%'; });
-
-    const profileOptionsContainer = createEl('div',{className: 'profile-options-container'});
-
-    if(userData.user_id != currentUserId) {
-        if(!isFriend(userData.user_id)) {
-            const addFriendBtn = createEl('button', { className: 'profile-add-friend-button' });
-            addFriendBtn.innerHTML = ` <div class="icon-container">${createAddFriSVG()}</div> Arkadaş Ekle`;
-            function createAddFriSVG() {
-                return `
-                    <svg aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="white" viewBox="0 0 24 24">
-                        <path d="M19 14a1 1 0 0 1 1 1v3h3a1 1 0 0 1 0 2h-3v3a1 1 0 0 1-2 0v-3h-3a1 1 0 1 1 0-2h3v-3a1 1 0 0 1 1-1Z" fill="currentColor"></path>
-                        <path d="M16.83 12.93c.26-.27.26-.75-.08-.92A9.5 9.5 0 0 0 12.47 11h-.94A9.53 9.53 0 0 0 2 20.53c0 .81.66 1.47 1.47 1.47h.22c.24 0 .44-.17.5-.4.29-1.12.84-2.17 1.32-2.91.14-.21.43-.1.4.15l-.26 2.61c-.02.3.2.55.5.55h7.64c.12 0 .17-.31.06-.36C12.82 21.14 12 20.22 12 19a3 3 0 0 1 3-3h.5a.5.5 0 0 0 .5-.5V15c0-.8.31-1.53.83-2.07ZM12 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8Z" fill="white"></path>
-                    </svg>
-                `;
-            }
-            addFriendBtn.addEventListener('click', () => { addFriend(userData.user_id); });
-            profileOptionsContainer.appendChild(addFriendBtn);
-    
-        } 
-        const sendMsgBtn = createEl('button',{className:'profile-send-msg-button'});
-        const sendMsgIco = createEl('div',{innerHTML:`
-            <svg aria-hidden="true" role="img" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24"><path fill="currentColor" d="M12 22a10 10 0 1 0-8.45-4.64c.13.19.11.44-.04.61l-2.06 2.37A1 1 0 0 0 2.2 22H12Z" class=""></path></svg>
-        `});
-    
-        sendMsgBtn.appendChild(sendMsgIco);
-    
-        sendMsgBtn.addEventListener('click', () => {
-            loadMainMenu();
-            OpenDm(userData.user_id);
-            const profilePopContainer = getId('profilePopContainer');
-            if(profilePopContainer) {
-                profilePopContainer.parentNode.remove();
-            }
-        })
-        profileOptionsContainer.appendChild(sendMsgBtn);
-
-    }
-
-    
-    
-    
-    profileContainer.appendChild(profileOptionsContainer);
-    setProfilePic(profileImg,userData.user_id);
-
-    const bubble = createBubble(userData.is_online,true);
-    profileImg.appendChild(bubble);
-
-    appendToProfileContextList(userData,userData.user_id);
-    profileOptions.addEventListener('click',function(event) { 
-        showContextMenu(event.pageX, event.pageY,contextList[userData.user_id]);
-    });
-    profileImg.onload = function() {
-        popTopContainer.style.backgroundColor = getAverageRGB(profileImg);
-    };
-    
-    const contentElements = [popTopContainer,profileImg ,profileContainer, popBottomContainer];
-    createPopUp({
-        contentElements: contentElements,
-        id: 'profilePopContainer'
-    });
-}
 
 
 
-function createPopUp({contentElements, id, closeBtnId=null}) {
-    const popOuterParent = createEl('div', { className: 'outer-parent' });
-    const parentContainer = createEl('div', { className: 'pop-up', id: id });
-    popOuterParent.style.display = 'flex';
-
-
-    contentElements.forEach(element => parentContainer.appendChild(element));
-    if(closeBtnId) {
-        const closeBtn = createEl('button', { className: 'popup-close', id: closeBtnId, textContent: 'X' });
-        parentContainer.appendChild(closeBtn);
-
-
-        closeBtn.addEventListener('click', function() {
-            console.log("Closing pop up.");
-            closePopUp(popOuterParent, parentContainer);
-        });
-
-    }
-
-    let isMouseDownOnPopOuter = false;
-
-    popOuterParent.addEventListener('mousedown', function(event) {
-        // Only set the flag if the mousedown occurred on the popOuterParent
-        if (event.target === popOuterParent) {
-            isMouseDownOnPopOuter = true;
-        }
-    });
-    
-    popOuterParent.addEventListener('mouseup', function(event) {
-        // Only proceed with the click action if the mouse down started on popOuterParent
-        if (isMouseDownOnPopOuter && event.target === popOuterParent) {
-            console.log("Pop outer clicked!");
-            closePopUp(popOuterParent, parentContainer);
-        }
-        // Reset the flag regardless of where the mouseup occurs
-        isMouseDownOnPopOuter = false;
-    });
-    
-
-    popOuterParent.appendChild(parentContainer);
-    document.body.appendChild(popOuterParent);
-    return popOuterParent;
-}
 
 function getCurrentInviteId() {
     let currentGuild = currentGuildId;
@@ -871,46 +266,6 @@ function getCurrentInviteId() {
 }
 
 
-function createInviteUsersPop() {
-    const title = `Arkadaşlarını ${currentGuildName} sunucusuna davet et`;
-    const sendText = "VEYA BİR ARKADAŞINA SUNUCU DAVETİ BAĞLANTISI YOLLA";
-    const invitelink = `${window.location.protocol}//${window.location.hostname}/join-guild/${getCurrentInviteId()}`;
-
-    const inviteTitle = createEl('p', { id: 'invite-users-title', textContent: title });
-    const channelnamehash = createEl('p', { id: 'invite-users-channel-name-hash', innerHTML:textChanHtml });
-    
-    const channelNameText = createEl('p', { id: 'invite-users-channel-name-text', textContent: currentChannelName });
-    const sendInvText = createEl('p', { id: 'invite-users-send-text', textContent: sendText });
-    const inviteUsersSendInput = createEl('input', { id: 'invite-users-send-input', value: invitelink });
-
-    const popBottomContainer = createEl('div', { className: 'popup-bottom-container', id: 'invite-popup-bottom-container' });
-    popBottomContainer.appendChild(sendInvText);
-    popBottomContainer.appendChild(inviteUsersSendInput);
-
-    const contentElements = [inviteTitle, channelnamehash, channelNameText, popBottomContainer];
-
-    createPopUp({
-        contentElements: contentElements,
-        id: 'inviteUsersPopContainer',
-        closeBtnId: 'invite-close-button'
-    });
-}
-
-function toggleDropdown() {
-    if(!isOnGuild) { return }
-    if (!isDropdownOpen) {
-        isDropdownOpen = true;
-        dropDown.style.display = 'flex'; 
-        dropDown.style.animation = 'fadeIn 0.3s forwards'; 
-        fillDropDownContent();
-    } else {
-        dropDown.style.animation = 'fadeOut 0.3s forwards'; 
-        setTimeout(() => {
-            dropDown.style.display = 'none'; 
-            isDropdownOpen = false;
-        }, 300); 
-    }
-}
 
 
 async function handleScroll() {
@@ -976,7 +331,7 @@ function debounce(func, delay) {
         }, delay);
     };
 }
-let typingTimeout;
+
 
 
 function getUserIdFromNick(nick) {
@@ -1096,101 +451,7 @@ async function handleUserKeydown(event) {
         popKeyboardConfetti();
     }
 }
-let isSnow = false;
-let snowActive = false;
 
-let particeContainer;
-function enableSnowOnSettings() {
-    if(isSnow) {
-        enableSnow();
-    } else {
-        snowActive = false;
-    }
-}
-
-function toggleSnow() {
-    if(isSnow) {
-        disableSnow();
-    } else {
-        isSnow = true;
-        enableSnow();
-    }
-}
-function disableSnow() {
-    snowActive = false; 
-    isSnow = false;
-}
-function disableSnowOnSettingsOpen() {
-    snowActive = false;
-}
-let isParty = false;
-function toggleParty() {
-    isParty = !isParty;
-
-    if (isParty) {
-        enableBorderMovement(); // Start analyzing audio if party mode is enabled
-    } else {
-        stopAudioAnalysis(); // Stop analyzing audio if party mode is disabled
-    }
-}
-
-function enableSnow() {
-    particeContainer = getId('confetti-container');
-    snowActive = true; 
-    let skew = 1;
-
-    function randomInRange(min, max) {
-        return Math.random() * (max - min) + min;
-    }
-
-    (function frame() {
-        if (!snowActive) return; 
-
-        skew = Math.max(0.8, skew - 0.001);
-
-        confetti({
-            particleCount: 1,
-            startVelocity: 0,
-            ticks: 300,
-            origin: {
-                x: Math.random(),
-                y: (Math.random() * skew) - 0.2
-            },
-            colors: ['#ffff'],
-            shapes: ['circle'],
-            gravity: randomInRange(0.4, 0.6),
-            scalar: randomInRange(0.4, 1),
-            drift: randomInRange(-0.4, 0.4),
-            particleContainer: particeContainer
-        });
-
-        requestAnimationFrame(frame); 
-    }());
-}
-
-function popKeyboardConfetti() {
-    const { x, y } = getCursorXY(userInput, userInput.selectionStart);
-    const inputRect = userInput.getBoundingClientRect();
-    
-    let ratioY = y / window.innerHeight + 0.95;
-    let ratioX = (inputRect.left + x) / window.innerWidth;
-
-    if (ratioY > 1) {
-        ratioY = 1;
-    }
-    if (ratioX < 0.2) {
-        ratioX = 0.2;
-    }
-
-    setTimeout(() => {
-        confetti({
-            particleCount: 5,
-            spread: 7,
-            origin: { x: ratioX, y: ratioY },
-            disableForReducedMotion: true
-        });
-    }, 0);
-}
 
 const maxFiles = 8;
 let fileList = [];
@@ -1339,65 +600,12 @@ function assignElements() {
 
 }
 
-function initializeMusic() {
-    const modal = createEl('div', { className: 'modal'});
-    document.body.appendChild(modal);
-
-    const songs = [
-        '/static/sounds/musics/1.mp3',
-        '/static/sounds/musics/2.mp3',
-        '/static/sounds/musics/3.mp3',
-        '/static/sounds/musics/4.mp3'
-    ];
-
-    let currentSongIndex = 0;
-
-    function playCurrentSong() {
-        const currentSong = songs[currentSongIndex];
-        
-        playAudio(currentSong); 
-        
-        const audio = new Audio(currentSong);
-        audio.onended = function () {
-            currentSongIndex++;
-            if (currentSongIndex >= songs.length) {
-                currentSongIndex = 0;
-            }
-
-            playCurrentSong(); 
-        };
-    }
-
-    modal.addEventListener('click', function () {
-        playCurrentSong();
-        modal.style.display = 'none'; 
-    });
-}
 
 
 
 
 
-
-document.addEventListener('DOMContentLoaded', function () {
-
-    assignElements();
-    
-    getId('globalSearchInput').addEventListener('click', function(){
-        openSearchPop();
-    });
-
-    getId('guild-container').addEventListener('click', function(event) {
-        if (event.target.id === 'guild-container' || event.target.id === 'guild-name') {
-            toggleDropdown(); 
-        }
-    });
-    gifsMenuSearchBar.addEventListener('keydown', debounce(async function(event) {
-        await loadGifContent();
-    }, 300));
-    createScrollButton();
-    
-    chatContainer.addEventListener('scroll', handleScroll);
+function initialiseUserInput() {
 
     userInput.addEventListener('input', adjustHeight);
     userInput.addEventListener('keydown', handleUserKeydown);
@@ -1426,19 +634,37 @@ document.addEventListener('DOMContentLoaded', function () {
             userMentionDropdown.style.display = 'none'; // Close dropdown
         }
     });
+}
+document.addEventListener('DOMContentLoaded', function () {
 
+    assignElements();
+    
+    getId('globalSearchInput').addEventListener('click', function(){
+        openSearchPop();
+    });
+
+    getId('guild-container').addEventListener('click', function(event) {
+        if (event.target.id === 'guild-container' || event.target.id === 'guild-name') {
+            toggleDropdown(); 
+        }
+    });
+    gifsMenuSearchBar.addEventListener('keydown', debounce(async function(event) {
+        await loadGifContent();
+    }, 300));
+    createScrollButton();
+    
+    chatContainer.addEventListener('scroll', handleScroll);
+
+    initialiseUserInput();
     document.addEventListener('click', (event) => {
         if (!userMentionDropdown.contains(event.target) && event.target !== userInput) {
             userMentionDropdown.style.display = 'none';
         }
     });
 
-
     closeReplyMenu();
     adjustHeight();
 
-    
-    
     setDropHandler();
     
     updateFileImageBorder();
@@ -1452,13 +678,58 @@ document.addEventListener('DOMContentLoaded', function () {
     
 
     const friendContainer = getId('friend-container-item');
-
     friendContainer.addEventListener('click',loadMainMenu);
 
     if(isOnGuild) { socket.emit('get_user_metadata',currentGuildId);  }
 
-    displayWelcomeMessage('Reeyuki','2024-08-09T12:34:56.789Z');
     window.scrollTo(0, 0);
+
+    isDomLoaded = true;
+    currentUserId = passed_user_id;
+    currentUserName = user_name;
+    currentDiscriminator = user_discriminator;
+    
+    getId('tb-showprofile').addEventListener('click', toggleUsersList);
+    selectSettingCategory(MyAccount);
+    selfProfileImage = getId("self-profile-image");
+
+    selfProfileImage.addEventListener("mouseover", function() { this.style.borderRadius = '0px'; });
+    selfProfileImage.addEventListener("mouseout", function() { this.style.borderRadius = '50%'; });
+
+
+    selfBubble = getId("self-bubble");
+
+    initialiseMe();
+    if (window.location.pathname.startsWith('/channels/@me/')) {
+        const parts = window.location.pathname.split('/');
+        const friendId = parts[3];
+        OpenDm(friendId);
+        
+    } else  if (typeof passed_guild_id !== 'undefined' && typeof passed_channel_id !== 'undefined' && typeof passed_author_id !== 'undefined') {
+        loadGuild(passed_guild_id,passed_channel_id,passed_guild_name,passed_author_id);
+    }
+    if (typeof passed_message_readen !== 'undefined') {
+        readenMessagesCache = passed_message_readen;
+    }
+    if (typeof friends_status === 'object' && friends_status !== null) {
+        friends_cache = friends_status;
+    } 
+    if(typeof passed_friend_id !== 'undefined') {
+        addUser(passed_friend_id,passed_friend_name,passed_friend_discriminator,passed_friend_blocked)
+    }
+    addContextListeners();
+    const val = loadBooleanCookie('isParty');
+    isParty = val;
+
+    
+    if (isParty && isAudioPlaying) {
+        enableBorderMovement();
+    }
+    
+    getId("variableScript").remove();
+
+
+
     
 });
 window.scrollTo(0, 0);
@@ -2659,7 +1930,10 @@ function createNonProfileImage(newMessage,  date) {
 function openExternalUrl(url) {
     window.open(url, '_blank');
 }
-function processMediaLink(link, newMessage, messageContentElement,content) {
+
+
+
+function processMediaLink(link, newMessage, messageContentElement, content) {
     return new Promise((resolve, reject) => {
         let mediaElement = null;
         newMessage.setAttribute('data-attachment_url', link);
@@ -2671,8 +1945,9 @@ function processMediaLink(link, newMessage, messageContentElement,content) {
                     if (dummyElement) {
                         messageContentElement.replaceChild(mediaElement, dummyElement);
                     }
-                    resolve(); 
+                    resolve();
                 };
+
                 const handleError = (error) => {
                     console.error('Error loading media element:', error);
                     const spanElement = createEl('span');
@@ -2684,7 +1959,7 @@ function processMediaLink(link, newMessage, messageContentElement,content) {
                     if (mediaElement.parentNode) {
                         mediaElement.parentNode.replaceChild(spanElement, mediaElement);
                     }
-                    resolve(true); 
+                    resolve(true);
                 };
 
                 if (mediaElement instanceof HTMLImageElement || mediaElement instanceof HTMLAudioElement || mediaElement instanceof HTMLVideoElement) {
@@ -2695,24 +1970,28 @@ function processMediaLink(link, newMessage, messageContentElement,content) {
                     resolve();
                 }
             } else {
-                resolve(true); 
+                resolve(true);
             }
         };
+
         function createRegularText(content) {
-            const spanElement = createEl('p',{id: 'message-content-element'});
+            const spanElement = createEl('p', { id: 'message-content-element' });
             spanElement.textContent = content;
             spanElement.style.marginLeft = '0px';
-            
+            messageContentElement.appendChild(spanElement); // Ensure the text is appended
         }
 
+        // Create media elements based on link types
         if (isImageURL(link) || isAttachmentUrl(link)) {
-            const dummyImage = createImageElement(messageContentElement,content,link);
-            messageContentElement.appendChild(dummyImage);
-            mediaElement = createImageElement(messageContentElement,content,link);
+            mediaElement = document.createElement('img');
+            mediaElement.src = link; // Directly set the image source
+            mediaElement.alt = 'Loading...'; // Optional: provide an alt text
+            mediaElement.style.width = '100%'; // Optional: ensure it scales properly
+            mediaElement.style.height = 'auto'; // Optional: maintain aspect ratio
+            mediaElement.dataset.dummy = link; // Identify the image as the one being loaded
+            messageContentElement.appendChild(mediaElement);
         } else if (isTenorURL(link)) {
-            const dummyGif = createTenorElement(messageContentElement,content,link);
-            messageContentElement.appendChild(dummyGif);
-            mediaElement = createTenorElement(messageContentElement,content,link);
+            mediaElement = createTenorElement(messageContentElement, content, link);
         } else if (isYouTubeURL(link)) {
             mediaElement = createYouTubeElement(link);
         } else if (isAudioURL(link)) {
@@ -2721,35 +2000,34 @@ function processMediaLink(link, newMessage, messageContentElement,content) {
             mediaElement = createVideoElement(link);
         } else if (isJsonUrl(link)) {
             mediaElement = createJsonElement(link);
-        } else if(isURL(link)) {
+        } else if (isURL(link)) {
             const urlPattern = /https?:\/\/[^\s]+/g;
-            const parts = content.split(urlPattern); 
+            const parts = content.split(urlPattern);
             const urls = content.match(urlPattern) || [];
-        
+
             parts.forEach((part, index) => {
                 if (part) {
                     const normalSpan = createEl('span', { textContent: part });
                     messageContentElement.appendChild(normalSpan);
                 }
-        
+
                 if (index < urls.length) {
                     const urlSpan = createEl('a', { textContent: urls[index] });
                     urlSpan.classList.add('url-link');
-                    urlSpan.addEventListener('click', ()=> { openExternalUrl(link)})
+                    urlSpan.addEventListener('click', () => { openExternalUrl(urls[index]) });
                     messageContentElement.appendChild(urlSpan);
                 }
             });
-            displayWebPreview(messageContentElement,link);
-            
+            displayWebPreview(messageContentElement, link);
         } else {
-            createRegularText(content,messageContentElement);
-            messageContentElement.parentNode.replaceChild(spanElement,messageContentElement)
-            resolve(true); 
+            createRegularText(content);
+            resolve(true);
         }
 
         handleMediaElement();
     });
 }
+
 
 async function createMediaElement(content, messageContentElement, newMessage, attachment_urls, callback) {
     let links = extractLinks(content) || [];
@@ -2786,75 +2064,10 @@ async function createMediaElement(content, messageContentElement, newMessage, at
     
     await processLinks();
 }
-function createTenorElement(msgContentElement, inputText, url) {
-    let tenorURL = '';
-    if (url.includes("media1.tenor.com/m/") || url.includes("c.tenor.com/")) {
-        tenorURL = url;
-    } else if (url.startsWith("tenor.com") || url.startsWith("https://tenor.com")) {
-        tenorURL = url.endsWith(".gif") ? url : `${url}.gif`;
-    }
-
-    let imgElement = createEl('img');
-    imgElement.src = defaultMediaImageUrl; // Placeholder image
-    imgElement.style.cursor = 'pointer';
-    imgElement.style.maxWidth = `${maxTenorWidth}px`;
-    imgElement.style.maxHeight = `${maxTenorHeight}px`;
-
-    // Create a new Image object to preload the GIF
-    const actualImage = new Image();
-    actualImage.src = tenorURL;
-    actualImage.onload = function () {
-        imgElement.src = actualImage.src; // Update src with the actual GIF
-    };
-    actualImage.onerror = function () {
-        imgElement.src = defaultErrorImageUrl; // Optional: Set an error image
-        imgElement.remove();
-        msgContentElement.textContent = inputText;
-    };
-
-    imgElement.addEventListener('click', function () {
-        displayImagePreview(imgElement.src);
-    });
-
-    return imgElement;
-}
-
-
-
-function createImageElement(msgContentElement, inputText, url_src) {
-    const imgElement = createEl('img', { class: 'imageElement' });
-    imgElement.src = defaultMediaImageUrl;
-    imgElement.style.maxWidth = `${maxWidth}px`;
-    imgElement.style.maxHeight = `${maxHeight}px`;
-
-    const actualImage = new Image();
-    actualImage.src = url_src;
-    actualImage.onload = function () {
-        imgElement.src = url_src;
-    };
-    actualImage.onerror = function () {
-        imgElement.remove();
-        msgContentElement.textContent = inputText;
-    };
-
-    imgElement.addEventListener('click', function () {
-        displayImagePreview(imgElement.src);
-    });
-
-    return imgElement;
-}
 
 function hasSharedGuild(friend_id) {
     return shared_guilds_map.hasOwnProperty(friend_id);
 }
-
-function createAudioElement(audioURL) {
-    const audioElement = createEl('audio');
-    audioElement.src = audioURL;
-    audioElement.controls = true; 
-    return audioElement;
-}
-
 async function sendMessage(value, user_ids) {
     if (value == '') { return }
     if(isOnDm && currentDmId && !isFriend(currentDmId) && !hasSharedGuild(currentDmId)) {
@@ -2950,13 +2163,22 @@ function isAttachmentUrl(url) {
 }
 
 function isYouTubeURL(url) {
-    return /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/.test(url);
+    return /^(?:(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?|shorts)\/|\S*?[?&]v=)|youtu\.be\/|m\.youtube\.com\/watch\?v=)([a-zA-Z0-9_-]{11}))$/i.test(url);
 }
 
+
 function getYouTubeEmbedURL(url) {
-    const videoId = url.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/)[1];
-    return `https://www.youtube.com/embed/${videoId}`;
+    const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:shorts\/|(?:v|e(?:mbed)?|watch\?v=))|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+    const match = url.match(regex);
+
+    if (match) {
+        const videoId = match[1];
+        return `https://www.youtube.com/embed/${videoId}`;
+    } else {
+        return null; 
+    }
 }
+
 
 function isTenorURL(url) {
     return /(?:tenor\.com|media\.tenor\.com)\/(?:[^\/]+\/)+[^\/]+(?:-\w+\.(?:gif|mp4)|$)/.test(url);
@@ -2965,8 +2187,7 @@ function isTenorURL(url) {
 
 function isAudioURL(url) {
     const audioExtensions = ['.mp3', '.wav', '.ogg', '.aac', '.flac'];
-
-    const urlWithoutQueryParams = url.split('?')[0]; // Remove query parameters from the URL
+    const urlWithoutQueryParams = url.split('?')[0];
     const fileExtension = urlWithoutQueryParams.split('.').pop().toLowerCase();
     
     return audioExtensions.includes(`.${fileExtension}`);
@@ -2974,9 +2195,7 @@ function isAudioURL(url) {
 
 
 
-function isJsonUrl(url) {
-    return url.toLowerCase().includes('.json');
-}
+function isJsonUrl(url) {  return url.toLowerCase().includes('.json'); }
 function isVideoUrl(url) {
     const videoPatterns = [
         /\.mp4/i, /\.avi/i, /\.mov/i, /\.wmv/i, /\.mkv/i, /\.flv/i, /\.webm/i // Video file extensions
@@ -2994,31 +2213,7 @@ function beautifyJson(jsonData) {
     }
 }
 
-async function createJsonElement(url) {
-    try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error('Failed to fetch JSON data');
-        }
-        let jsonData = await response.json();
-        const beautifiedData = beautifyJson(jsonData);
-        const truncatedJsonLines = beautifiedData.split('\n').slice(0, 15).join('\n');
-        const jsonContainer = createEl('div');
-        jsonContainer.classList.add('jsonContainer');
-        const jsonElement = createEl('pre');
-        jsonElement.textContent = truncatedJsonLines;
-        jsonElement.style.userSelect = 'text';
-        jsonElement.style.whiteSpace = 'pre-wrap';
-        jsonContainer.appendChild(jsonElement);
-        jsonContainer.addEventListener('click', function () {
-            displayJsonPreview(beautifiedData); 
-        });
-        return jsonContainer;
-    } catch (error) {
-        console.error('Error creating JSON element:', error);
-        return null;
-    }
-}
+
 
 
 
@@ -3037,22 +2232,7 @@ function displayImagePreview(sourceimage) {
     }
 
 }
-function asda() {
-    let beautifiedData = JSON.stringify(jsonData, null, '\t'); // Initial beautified JSON
 
-    // Function to toggle between beautified and original JSON
-    let isBeautified = true; // Initial state is beautified
-    function toggleJsonView() {
-        if (isBeautified) {
-            // Switch to normal view
-            jsonElement.textContent = JSON.stringify(jsonData, null, 2); // Use 2 spaces for indentation
-            isBeautified = false;
-        } else {
-            jsonElement.textContent = beautifiedData || '[Error beautifying JSON]';
-            isBeautified = true;
-        }
-    }
-}
 function displayJsonPreview(sourceJson) {
     jsonPreviewContainer.style.display = 'flex';
     jsonPreviewElement.dataset.content_observe = sourceJson;
@@ -3129,7 +2309,6 @@ function sanitizeHTML(html) {
 
 
 
-
 function applyCustomStyles(html) {
     const styles = {
         'red': 'color: red;',
@@ -3151,20 +2330,6 @@ function applyCustomStyles(html) {
 
     return styledHTML.replace(/&lt;br&gt;/g, '&lt;br&gt;');
 }
-
-// Function to sanitize HTML and allow only <br> tags
-//function sanitizeHTML(html) {
-//    // Replace <script> tags and other tags with escaped text
-//    const sanitizedString = html.replace(/<\/?([a-z][a-z0-9]*)\b[^>]*>?/gi, (tag) => {
-//        if (tag.toLowerCase() === '<br>' || tag.toLowerCase() === '</br>') {
-//            return tag; // Allow <br> and </br> tags as is
-//        } else {
-//            return tag.replace(/</g, '&lt;').replace(/>/g, '&gt;'); // Escape other tags
-//        }
-//    });
-//
-//    return sanitizedString;
-//}
 
 
 
@@ -3191,12 +2356,102 @@ function hideJsonPreview(event) {
 }
 
 
+function createTenorElement(msgContentElement, inputText, url) {
+    let tenorURL = '';
+    if (url.includes("media1.tenor.com/m/") || url.includes("c.tenor.com/")) {
+        tenorURL = url;
+    } else if (url.startsWith("tenor.com") || url.startsWith("https://tenor.com")) {
+        tenorURL = url.endsWith(".gif") ? url : `${url}.gif`;
+    }
+
+    let imgElement = createEl('img');
+    imgElement.src = defaultMediaImageUrl; // Placeholder image
+    imgElement.style.cursor = 'pointer';
+    imgElement.style.maxWidth = `${maxTenorWidth}px`;
+    imgElement.style.maxHeight = `${maxTenorHeight}px`;
+
+    // Create a new Image object to preload the GIF
+    const actualImage = new Image();
+    actualImage.src = tenorURL;
+    actualImage.onload = function () {
+        imgElement.src = actualImage.src; // Update src with the actual GIF
+    };
+    actualImage.onerror = function () {
+        imgElement.src = defaultErrorImageUrl; // Optional: Set an error image
+        imgElement.remove();
+        msgContentElement.textContent = inputText;
+    };
+
+    imgElement.addEventListener('click', function () {
+        displayImagePreview(imgElement.src);
+    });
+
+    return imgElement;
+}
+
+
+
+function createImageElement(msgContentElement, inputText, url_src) {
+    const imgElement = createEl('img', { class: 'imageElement' });
+    imgElement.src = defaultMediaImageUrl;
+    imgElement.style.maxWidth = `${maxWidth}px`;
+    imgElement.style.maxHeight = `${maxHeight}px`;
+
+    const actualImage = new Image();
+    actualImage.src = url_src;
+    actualImage.onload = function () {
+        imgElement.src = url_src;
+    };
+    actualImage.onerror = function () {
+        imgElement.remove();
+        msgContentElement.textContent = inputText;
+    };
+
+    imgElement.addEventListener('click', function () {
+        displayImagePreview(imgElement.src);
+    });
+
+    return imgElement;
+}
+
+
+
+function createAudioElement(audioURL) {
+    const audioElement = createEl('audio');
+    audioElement.src = audioURL;
+    audioElement.controls = true; 
+    return audioElement;
+}
+async function createJsonElement(url) {
+    try {
+        const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error('Failed to fetch JSON data');
+        }
+        let jsonData = await response.json();
+        const beautifiedData = beautifyJson(jsonData);
+        const truncatedJsonLines = beautifiedData.split('\n').slice(0, 15).join('\n');
+        const jsonContainer = createEl('div');
+        jsonContainer.classList.add('jsonContainer');
+        const jsonElement = createEl('pre');
+        jsonElement.textContent = truncatedJsonLines;
+        jsonElement.style.userSelect = 'text';
+        jsonElement.style.whiteSpace = 'pre-wrap';
+        jsonContainer.appendChild(jsonElement);
+        jsonContainer.addEventListener('click', function () {
+            displayJsonPreview(beautifiedData); 
+        });
+        return jsonContainer;
+    } catch (error) {
+        console.error('Error creating JSON element:', error);
+        return null;
+    }
+}
 
 
 function createYouTubeElement(url) {
     const youtubeURL = getYouTubeEmbedURL(url);
     const iframeElement = createEl('iframe');
-
     iframeElement.src = youtubeURL;
     iframeElement.frameborder = '0';
     iframeElement.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
@@ -3206,8 +2461,6 @@ function createYouTubeElement(url) {
     iframeElement.setAttribute("msallowfullscreen", "true");
     iframeElement.setAttribute("oallowfullscreen", "true");
     iframeElement.setAttribute("webkitallowfullscreen", "true");
-
-
     iframeElement.className = 'youtube-element';
     return iframeElement;
 }
@@ -3218,7 +2471,6 @@ function createVideoElement(url) {
     videoElement.src = url;
     videoElement.width = '560';
     videoElement.height = '315';
-    
     videoElement.controls = true; 
     return videoElement;
 }
@@ -3248,99 +2500,12 @@ function closeReplyMenu() {
     currentReplyingTo = '';
     userInput.classList.remove('reply-opened')
 }
-function createMsgOptionButton(message,isReply) {
-    const textc = isReply ? '↪' : '⋯'; 
-    
-    const newButton = createEl('button',{className:'message-button'});
 
-        const textEl = createEl('div', { textContent: textc, className: 'message-button-text' });
-        newButton.appendChild(textEl);
-    if(isReply) {
-        newButton.onclick = function() {
-            showReplyMenu(message.id,message.dataset.user_id);
-        }
-
-    }
-
-    newButton.addEventListener("mousedown", function() {
-        newButton.style.border = "2px solid #000000";
-    });    
-    newButton.addEventListener("mouseup", function() {
-        newButton.style.border = "none";
-    });
-    newButton.addEventListener("mouseover", function() {
-        newButton.style.backgroundColor = '#393a3b';
-    });    
-    newButton.addEventListener("mouseout", function() {
-        newButton.style.backgroundColor = '#313338';
-    });
-    newButton.addEventListener('focus', () => {
-        newButton.classList.add('is-focused');
-    });
-    newButton.addEventListener('blur', () => {
-        newButton.classList.remove('is-focused');
-    });
-    let buttonContainer = message.querySelector('.message-button-container');
-    if (!buttonContainer) {
-        buttonContainer = createEl('div');
-        buttonContainer.classList.add('message-button-container');
-        message.appendChild(buttonContainer);
-    }
-
-    buttonContainer.appendChild(newButton);
-    return newButton;
-}
-
-
-const ActionType = {
-    COPY_ID: "ID'yi Kopyala",
-    COPY_USER_ID: "Kullanıcı ID'sini Kopyala",
-    INVITE_TO_GUILD: "Sunucuya Davet Et",
-    BLOCK_USER: "Engelle",
-    REPORT_USER: "Kullanıcı Profilini Bildir",
-    REMOVE_USER: "Arkadaşı Çıkar",
-    EDIT_GUILD_PROFILE: "Sunucu Profilini Düzenle",
-    MENTION_USER : "Bahset"
-};
-const ChannelsActionType = {
-    MARK_AS_READ: "Okundu olarak işaretle",
-    COPY_LINK: "Bağlantıyı Kopyala",
-    MUTE_CHANNEL: "Kanalı Sessize Al",
-    NOTIFY_SETTINGS: "Bildirim Ayarları",
-    EDIT_CHANNEL: "Kanalı Düzenle",
-    DELETE_CHANNEL: "Kanalı Sil"
-
-}
-const VoiceActionType = {
-    OPEN_PROFILE: "Profil",
-    MENTION_USER: "Bahset",
-    MUTE_USER: "Sustur",
-    DEAFEN_USER: "Sağırlaştır"
-    
-}
 function editGuildProfile() {
     const mimicEvent = 'event';
     mimicEvent.target = 'target';
     mimicEvent.target.id = 'settings';
     openGuildSettingsDd(mimicEvent);
-}
-function createUserContext(user_id) {
-    const context = {
-        [VoiceActionType.OPEN_PROFILE]: () => drawProfilePop(user_id),
-        [VoiceActionType.MENTION_USER]: () => mentionUser(user_id),
-        [VoiceActionType.MUTE_USER]: () => muteUser(user_id),
-        [VoiceActionType.DEAFEN_USER]: () => deafenUser(user_id)
-    };
-
-    if (user_id === currentUserId) {
-        context[ActionType.EDIT_GUILD_PROFILE] = () => editGuildProfile();
-    }
-
-    if (isDeveloperMode) {
-        context[ActionType.COPY_ID] = () => copyId(user_id);
-    }
-
-    return context;
 }
 
 
@@ -3493,9 +2658,7 @@ function createOptions3Button(message,message_id,user_id) {
 
 let isUsersOpen = true;
 
-function loadEmojisContent() {
 
-}
 
 function displayGIFs(gifDatas) {
     gifsMenuContainer.innerHTML = ''; 
@@ -3551,7 +2714,6 @@ function toggleEmojis() {
         closeGifs();
     } else {
         gifMenu.style.display = 'block';
-        loadEmojisContent();
     }
     isGifsOpen = !isGifsOpen;
 }
@@ -3569,4 +2731,22 @@ async function toggleGifs() {
 
 function togglePin() {
     console.log("Toggle pin!");
+}
+
+
+
+function getLastSecondMessageDate() {
+    const messages = chatContent.children;
+    if (messages.length < 2) return  '';
+
+    const secondToLastMessage = messages[messages.length - 2];
+    if (secondToLastMessage) {
+        const dateGathered = secondToLastMessage.getAttribute('data-date');
+        if(dateGathered) {
+            const parsedDate = new Date(dateGathered);
+            const formattedDate = formatDate(parsedDate);
+            return formattedDate;
+        }
+    }
+    return '';
 }

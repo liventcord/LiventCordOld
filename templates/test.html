@@ -3,30 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Thumbnail Example</title>
+    <title>YouTube Player Example</title>
 </head>
 <body>
-
-<script>
-function extractId(url) {
-    const regex = /[?&]v=([^&#]+)/;
-    const match = url.match(regex);
-    return match ? match[1] : null;
-}
-
-var videoUrl = 'http://www.youtube.com/watch?v=y2XArpEcygc';
-var videoId = extractId(videoUrl);
-
-if (videoId) {
-    const path = `http://img.youtube.com/vi/${videoId}/maxresdefault.jpg`;
-    
-    const imageElement = document.createElement('img');
-    imageElement.src = path;
-    document.body.appendChild(imageElement);
-} else {
-    console.error('Video ID could not be extracted.');
-}
-</script>
-
+    <input type="text" id="youtube-url" placeholder="Enter YouTube URL" />
+    <button onclick="loadYouTubeVideo()">Load YouTube Video</button>
+    <div id="youtube-audio" data-autoplay="1" data-loop="1" style="display:none;">
+        <div id="youtube-status" style="cursor:pointer;">▶ Play</div>
+        <div id="youtube-player"></div>
+    </div>
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script>
+        let ytPlayer; 
+        function onYouTubeIframeAPIReady() {
+            const e = document.getElementById("youtube-audio");
+            const status = document.getElementById("youtube-status");
+            e.onclick = function() {
+                const playerState = ytPlayer.getPlayerState();
+                if (playerState === YT.PlayerState.PLAYING || playerState === YT.PlayerState.BUFFERING) {
+                    ytPlayer.pauseVideo();
+                    status.textContent = "▶ Play";  // Change text to Play
+                } else {
+                    ytPlayer.playVideo();
+                    status.textContent = "❚❚ Pause";  // Change text to Pause
+                }
+            };
+        }
+        function loadYouTubeVideo() {
+            const url = document.getElementById("youtube-url").value;
+            const videoId = extractVideoId(url);
+            if (videoId) {
+                document.getElementById("youtube-audio").style.display = "block"; 
+                ytPlayer = new YT.Player("youtube-player", {
+                    height: "0",
+                    width: "0",
+                    videoId: videoId,
+                    playerVars: { autoplay: 1, loop: 1, playlist: videoId },
+                    events: {
+                        onReady: function() {
+                            document.getElementById("youtube-status").textContent = "❚❚ Pause";  // Show Pause icon initially
+                        },
+                        onStateChange: function(event) {
+                            if (event.data === YT.PlayerState.ENDED) {
+                                document.getElementById("youtube-status").textContent = "▶ Play";  // Reset to Play icon
+                            }
+                        }
+                    }
+                });
+            } else {
+                alert("Invalid YouTube URL. Please try again.");
+            }
+        }
+        function extractVideoId(url) {
+            const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^&\n]{11})/;
+            const match = url.match(regex);
+            return match ? match[1] : null;
+        }
+    </script>
 </body>
 </html>

@@ -6,9 +6,23 @@
 <script runat="server">
     void Page_Load(object sender, EventArgs e)
     {
+        // Add CORS headers
+        Response.AddHeader("Access-Control-Allow-Origin", "*"); // Allow requests from any origin
+        Response.AddHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS"); // Allowed HTTP methods
+        Response.AddHeader("Access-Control-Allow-Headers", "Content-Type"); // Allowed headers
+
+        // Handle preflight OPTIONS request (used by browsers for CORS)
+        if (Request.HttpMethod == "OPTIONS")
+        {
+            Response.StatusCode = 200;
+            Response.End();
+            return;
+        }
+
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
 
         string videoId = Request.QueryString["url"];
+        videoId = System.Web.HttpUtility.UrlDecode(videoId); // <-- Added URL decoding here
 
         if (string.IsNullOrEmpty(videoId))
         {

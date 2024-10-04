@@ -3,62 +3,32 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Player Example</title>
+    <title>YouTube Audio Stream</title>
 </head>
 <body>
-    <input type="text" id="youtube-url" placeholder="Enter YouTube URL" />
-    <button onclick="loadYouTubeVideo()">Load YouTube Video</button>
-    <div id="youtube-audio" data-autoplay="1" data-loop="1" style="display:none;">
-        <div id="youtube-status" style="cursor:pointer;">▶ Play</div>
-        <div id="youtube-player"></div>
-    </div>
-    <script src="https://www.youtube.com/iframe_api"></script>
+    <h1>YouTube Audio Streamer</h1>
+    <input type="text" id="videoId" placeholder="Enter YouTube Video ID" />
+    <button id="streamButton">Stream Audio</button>
+    <audio id="audioPlayer" controls></audio>
+
     <script>
-        let ytPlayer; 
-        function onYouTubeIframeAPIReady() {
-            const e = document.getElementById("youtube-audio");
-            const status = document.getElementById("youtube-status");
-            e.onclick = function() {
-                const playerState = ytPlayer.getPlayerState();
-                if (playerState === YT.PlayerState.PLAYING || playerState === YT.PlayerState.BUFFERING) {
-                    ytPlayer.pauseVideo();
-                    status.textContent = "▶ Play";  // Change text to Play
-                } else {
-                    ytPlayer.playVideo();
-                    status.textContent = "❚❚ Pause";  // Change text to Pause
-                }
-            };
-        }
-        function loadYouTubeVideo() {
-            const url = document.getElementById("youtube-url").value;
-            const videoId = extractVideoId(url);
-            if (videoId) {
-                document.getElementById("youtube-audio").style.display = "block"; 
-                ytPlayer = new YT.Player("youtube-player", {
-                    height: "0",
-                    width: "0",
-                    videoId: videoId,
-                    playerVars: { autoplay: 1, loop: 1, playlist: videoId },
-                    events: {
-                        onReady: function() {
-                            document.getElementById("youtube-status").textContent = "❚❚ Pause";  // Show Pause icon initially
-                        },
-                        onStateChange: function(event) {
-                            if (event.data === YT.PlayerState.ENDED) {
-                                document.getElementById("youtube-status").textContent = "▶ Play";  // Reset to Play icon
-                            }
-                        }
-                    }
-                });
-            } else {
-                alert("Invalid YouTube URL. Please try again.");
+        document.getElementById('streamButton').addEventListener('click', async () => {
+            const videoId = document.getElementById('videoId').value;
+            if (!videoId) {
+                alert("Please enter a video ID.");
+                return;
             }
-        }
-        function extractVideoId(url) {
-            const regex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|.*[?&]v=)|youtu\.be\/)([^&\n]{11})/;
-            const match = url.match(regex);
-            return match ? match[1] : null;
-        }
+
+            try {
+                const audioPlayer = document.getElementById('audioPlayer');
+                audioPlayer.src = `http://localhost:5009/ytstream?videoId=${encodeURIComponent(videoId)}`;
+                audioPlayer.play();
+
+            } catch (error) {
+                console.error('Error fetching audio stream:', error);
+                alert("Failed to stream audio. Please check the console for more details.");
+            }
+        });
     </script>
 </body>
 </html>

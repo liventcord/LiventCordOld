@@ -12,8 +12,6 @@ timeout = 30
 
 class PostGresFileManager(DatabaseManager):
     def __init__(self):
-        if not self.does_postgres_lives():
-            subprocess.run(['sudo', 'service', 'postgresql', 'start'])
         database_path = 'user_data.db'
         super().__init__(database_path,is_post_gress=True)
         self.is_post_gres=True
@@ -26,15 +24,6 @@ class PostGresFileManager(DatabaseManager):
 
 
 
-    def does_postgres_lives(self,host = 'localhost', port=5432):
-        try:
-            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-                s.settimeout(2) 
-                s.connect((host, port))
-            return True
-        except (socket.timeout, ConnectionRefusedError, OSError) as e:
-            print(f"PostgreSQL is not reachable. Error: {e}")
-            return False
         
     
     def calculate_total_guild_size(self,guild_id):

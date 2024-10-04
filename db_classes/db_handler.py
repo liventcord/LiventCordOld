@@ -26,7 +26,6 @@ if is_using_pg:
     except Exception as e:
         print(e)
         logger.exception(e)
-        requests.get('http://localhost:5005/shutdown')
 
         
 

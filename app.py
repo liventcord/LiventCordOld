@@ -10,9 +10,7 @@ from pytz import utc as UTC
 from werkzeug.utils import secure_filename
 from sqlite3 import IntegrityError
 from io import BytesIO
-from pytube import YouTube
 import os,json,signal,wave,time,requests
-import yt_dlp
 from limiter import Limiter
 if is_using_pg:
     from db_classes.db_handler import postgres_manager
@@ -114,33 +112,6 @@ def get_guild_messages_manager(guild_id):
         guild_messages_managers[guild_id] = GuildMessagesManager(guild_id)
     return guild_messages_managers[guild_id]
 
-
-def generate_audio(video_id):
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'quiet': True,
-        'noplaylist': True,
-    }
-
-    try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
-            audio_url = info['url']
-
-        with requests.get(audio_url, stream=True) as r:
-            r.raise_for_status()
-            for chunk in r.iter_content(chunk_size=1024):
-                if chunk:
-                    yield chunk
-    except Exception as e:
-        print(f"Error: {e}")
-        yield b""
-
-@app.route('/stream/<video_id>')
-def stream_audio(video_id):
-    return Response(stream_with_context(generate_audio(video_id)), content_type='audio/mpeg')
-
-            
 
 
 def get_common_data(email,user_id):

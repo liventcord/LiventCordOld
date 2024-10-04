@@ -1562,10 +1562,10 @@ textarea::-webkit-scrollbar-track {
 
 
 #profile-display, #self-profile-image {
-    border: 8px solid rgb(17, 18, 20); /* Initial border color */
-    border-radius: 8px; /* Optional: makes the corners rounded */
-    transition: transform 0.1s ease, border-color 0.1s ease; /* Smooth transitions */
-    position: relative; /* Ensure positioning works for absolute children */
+    border: 8px solid rgb(17, 18, 20); 
+    border-radius: 8px; 
+    transition: transform 0.1s ease, border-color 0.1s ease; 
+    position: relative; 
 }
 
 #self-profile-image {
@@ -1573,34 +1573,20 @@ textarea::-webkit-scrollbar-track {
 }
 
 @keyframes dance {
-    0% {
-        transform: rotate(0deg);
-        border-color: rgb(17, 18, 20);
-    }
-    25% {
-        transform: rotate(2deg);
-        border-color: rgb(17, 18, 20);
-    }
-    50% {
-        transform: rotate(-2deg);
-        border-color: rgb(17, 18, 20);
-    }
-    75% {
-        transform: rotate(2deg);
-        border-color: rgb(17, 18, 20);
-    }
-    100% {
-        transform: rotate(0deg);
-        border-color: rgb(17, 18, 20);
-    }
+    0% { transform: rotate(0deg) scale(1); }
+    25% { transform: rotate(2deg) scale(1.2); }
+    50% { transform: rotate(-2deg) scale(1.2); } 
+    75% { transform: rotate(2deg) scale(1.2); } 
+    100% { transform: rotate(0deg) scale(1); }
 }
 
 .dancing-border {
-    animation: dance 0.5s infinite; /* Animation details */
-    border-width: 5px; /* Adjust thickness as needed */
-    border-style: solid; /* Ensure there is a border style */
+    animation: dance 0.5s infinite; 
+    border-width: 0px; 
+    border-style: solid; 
     border-color: rgb(17, 18, 20);
 }
+
 
 #userMentionDropdown {
     border: 1px solid #3c3e42;

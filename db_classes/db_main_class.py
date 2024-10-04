@@ -164,12 +164,14 @@ class DatabaseManager:
 
         self.is_post_gress = is_post_gress
         self.connection_pool = None
-        password = os.getenv('PSQL_PASS')
-        
+        self.is_remote = False
+        self.password = os.getenv('PSQL_PASS') if self.is_remote else os.getenv('PSQL_PASS_LOCAL')
+        self.host = os.getenv('REMOTE_HOST') if self.is_remote else os.getenv('LOCAL_HOST')
+        self.port='5432'
         if self.is_post_gress:
             try:      
                 self.connection_pool = pool.SimpleConnectionPool(1, 50,  
-                    user='liventcord',password=password,host='localhost',port='5432', database='liventdb'
+                    user='liventcord',password=self.password,host=self.host,port=self.port, database='liventdb'
                 )
             except Exception as e:
                 db_logger.exception(f"Error initializing connection pool: {e}")

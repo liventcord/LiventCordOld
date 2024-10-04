@@ -2,6 +2,17 @@
 let audioContext = new (window.AudioContext || window.webkitAudioContext)();
 const bufferSize = 4096;
 
+let currentAudioPlayer;
+let isAudioPlaying = false; 
+let analyser = null; 
+let source = null; 
+let isAnalyzing = false; 
+let currentPlayer; 
+let youtubeIds = ['PB4VaN_qV3Q'] // 27vwjrbKFZo
+let youtubeIndex = 0;
+
+
+let isInitializedAudio;
 
 
 
@@ -10,7 +21,8 @@ document.addEventListener('DOMContentLoaded', function () {
     microphoneButton = getId("microphone-button");
     earphoneButton = getId("earphone-button");
 
-    initializeMp3Yt();
+    //initializeMp3Yt();
+    initializeMusic();
 
 });
 
@@ -66,12 +78,6 @@ function playAudioBuffer(audioBuffer) {
 
 
 
-let currentAudioPlayer;
-let isAudioPlaying = false; 
-let analyser = null; 
-let source = null; 
-let isAnalyzing = false; 
-
 function enableBorderMovement() {
     if (isAudioPlaying && currentAudioPlayer) {
         if (!isAnalyzing) {
@@ -80,23 +86,30 @@ function enableBorderMovement() {
     }
 }
 
+function getSelfFromUserList() {
+    const userProfiles = userList.querySelectorAll('.profile-container');
+    if (!userList || !userProfiles.length) return null; 
+    for (const profile of userProfiles) {
+        if (profile.id === currentUserId) {
+            return profile.querySelector('.profile-pic');
+        }
+    }
+    return null; // Return null if no profile found
+}
+
+
 function stopAudioAnalysis() {
     if (!isAnalyzing) return;
 
     isAnalyzing = false;
 
-    const userProfiles = userList.querySelectorAll('.profile-container');
-
-    let selfProfileDisplayElementList;
+    let selfProfileDisplayElementList = getSelfFromUserList();
+    if(selfProfileDisplayElementList) {
+        selfProfileDisplayElementList.style.borderRadius = '50%';
+        
+    }
     
-    userProfiles.forEach(profile => {
-        if (profile.id === currentUserId) {
-            const selfProfileDisplayElementList = profile.querySelector('.profile-pic');
-            if (selfProfileDisplayElementList) {
-                selfProfileDisplayElementList.style.borderRadius = '50%'; // Set border radius
-            }
-        }
-    });
+
 
     const profileDisplayElement = document.getElementById('profile-display');
     const selfProfileDisplayElement = document.getElementById('self-profile-image');
@@ -104,121 +117,155 @@ function stopAudioAnalysis() {
     resetWiggleEffect(profileDisplayElement, selfProfileDisplayElement,selfProfileDisplayElementList);
 }
 
-function startAudioAnalysis() {
-    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-    if (!(currentAudioPlayer instanceof HTMLMediaElement)) {
-        console.error('currentAudioPlayer is not a valid HTMLMediaElement.');
+async function playAudio(audioUrl) {
+    try {
+        if (currentPlayer) {
+            currentPlayer.pause(); 
+            currentPlayer.remove();
+        }
+
+        const audioElement = document.createElement('audio');
+        currentAudioPlayer = audioElement;
+        audioElement.id = 'audio-player';
+        audioElement.src = audioUrl;
+        audioElement.controls = true; 
+        document.body.appendChild(audioElement);
+
+        currentPlayer = audioElement;
+
+        audioElement.addEventListener('play', function() {
+            if (isParty) {
+                enableBorderMovement();
+            }
+            startAudioAnalysis();
+        });
+
+        audioElement.addEventListener('ended', function() {
+            stopCurrentMusic();
+            isAnalyzing = false;
+            if (analyser) {
+                analyser.disconnect();
+            }
+        });
+
+        await audioElement.play();
+        isAudioPlaying = true;
+
+    } catch (error) {
+        console.error("Error playing audio:", error);
+    }
+}
+
+function startAudioAnalysis() {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+    if (!(currentPlayer instanceof HTMLMediaElement)) {
+        console.error('currentPlayer is not a valid HTMLMediaElement.');
         return;
     }
 
-    const source = audioContext.createMediaElementSource(currentAudioPlayer);
-    const analyser = audioContext.createAnalyser();
+    analyser = audioContext.createAnalyser();
+    const source = audioContext.createMediaElementSource(currentPlayer);
     source.connect(analyser);
     analyser.connect(audioContext.destination);
 
     isAnalyzing = true;
 
     const dataArray = new Uint8Array(analyser.frequencyBinCount);
-    let recentVolumes = []; // Buffer to hold recent volume readings
-    const bufferSize = 10; // Number of samples to keep for average calculation
+    let recentVolumes = [];
+    const bufferSize = 10;
 
-    function analyzeAudio() {
-        if (!isAnalyzing) return; 
-    
-        const profileDisplayElement = document.getElementById('profile-display');
-        const selfProfileDisplayElement = document.getElementById('self-profile-image');
-    
-        analyser.getByteFrequencyData(dataArray);
-        
-        let sum = 0;
-        for (let i = 0; i < dataArray.length; i++) {
-            sum += dataArray[i];
-        }
-        
-        const averageVolume = sum / dataArray.length;
-    
-        recentVolumes.push(averageVolume);
-        if (recentVolumes.length > bufferSize) {
-            recentVolumes.shift(); // Remove the oldest volume if the buffer is full
-        }
-    
-        const dynamicThreshold = recentVolumes.reduce((acc, val) => acc + val, 0) / recentVolumes.length;
-    
-        const scaleFactor = 1 + (averageVolume / 256); // Normalize the value for scale
-        const borderColor = `rgb(${Math.min(255, averageVolume * 2)}, 0, ${Math.max(0, 255 - averageVolume * 2)})`;
-    
-        // If the average volume exceeds the dynamic threshold, enable dancing borders
-        if (averageVolume > dynamicThreshold) {
-            if (profileDisplayElement) {
-                profileDisplayElement.classList.add('dancing-border'); // Add dancing effect
-                profileDisplayElement.style.transform = `scale(${scaleFactor}) rotate(${Math.sin(averageVolume / 100) * 2}deg)`;
-                profileDisplayElement.style.borderColor = borderColor;
-            }
-            if (selfProfileDisplayElement) {
-                selfProfileDisplayElement.classList.add('dancing-border'); // Add dancing effect
-                selfProfileDisplayElement.style.transform = `scale(${scaleFactor}) rotate(${Math.sin(averageVolume / 100) * 2}deg)`;
-                selfProfileDisplayElement.style.borderColor = borderColor;
-            }
-    
-            const userProfiles = userList.querySelectorAll('.profile-container');
-            userProfiles.forEach(profile => {
-                if (profile.id === currentUserId) {
-                    const selfProfileDisplayElementList = profile.querySelector('.profile-pic');
-                    selfProfileDisplayElementList.classList.add('dancing-border'); // Add dancing effect
-                    selfProfileDisplayElementList.style.transform = `scale(${scaleFactor}) rotate(${Math.sin(averageVolume / 100) * 2}deg)`;
-                    selfProfileDisplayElementList.style.borderColor = borderColor;
-                    selfProfileDisplayElementList.style.borderWidth = '1px';
-                }
-            });
-        } else {
-            // If the average volume does not exceed the threshold, reset styles
-            if (profileDisplayElement) {
-                profileDisplayElement.classList.remove('dancing-border'); // Remove dancing effect
-                profileDisplayElement.style.transform = `scale(1)`;
-                profileDisplayElement.style.borderColor = 'rgb(17, 18, 20);'
-            }
-            if (selfProfileDisplayElement) {
-                selfProfileDisplayElement.classList.remove('dancing-border'); // Remove dancing effect
-                selfProfileDisplayElement.style.transform = `scale(1)`;
-                selfProfileDisplayElement.style.borderColor = 'rgb(17, 18, 20);'
-            }
-            const userProfiles = userList.querySelectorAll('.profile-container');
-            userProfiles.forEach(profile => {
-                if (profile.id === currentUserId) {
-                    const selfProfileDisplayElementList = profile.querySelector('.profile-pic');
-                    selfProfileDisplayElementList.classList.remove('dancing-border'); // Remove dancing effect
-                    selfProfileDisplayElementList.style.transform = `scale(1)`;
-                    selfProfileDisplayElementList.style.borderColor = 'rgb(17, 18, 20);'
-                }
-            });
-        }
-    
-        requestAnimationFrame(analyzeAudio);
+    analyzeAudio(bufferSize, dataArray, recentVolumes); 
+}
+
+function analyzeAudio(bufferSize, dataArray, recentVolumes) {
+    if (!isAnalyzing || !analyser) return; 
+
+    analyser.getByteFrequencyData(dataArray);
+
+    let sum = 0;
+    for (let i = 0; i < dataArray.length; i++) {
+        sum += dataArray[i];
     }
 
-    
-    analyzeAudio();
+    const averageVolume = sum / dataArray.length;
+
+    recentVolumes.push(averageVolume);
+    if (recentVolumes.length > bufferSize) {
+        recentVolumes.shift();
+    }
+
+    const dynamicThreshold = recentVolumes.reduce((acc, val) => acc + val, 0) / recentVolumes.length;
+
+    const scaleFactor = 1 + (averageVolume / 128); 
+    const borderColor = `rgb(${Math.min(255, averageVolume * 2)}, 0, ${Math.max(0, 255 - averageVolume * 2)})`;
+
+    const profileDisplayElement = document.getElementById('profile-display');
+    const selfProfileDisplayElement = document.getElementById('self-profile-image');
+
+    if (averageVolume > dynamicThreshold) {
+        if (profileDisplayElement) {
+            profileDisplayElement.classList.add('dancing-border');
+            profileDisplayElement.style.transform = `scale(${scaleFactor})`;
+            profileDisplayElement.style.borderColor = borderColor;
+        }
+        if (selfProfileDisplayElement) {
+            selfProfileDisplayElement.classList.add('dancing-border');
+            selfProfileDisplayElement.style.transform = `scale(${scaleFactor})`;
+            selfProfileDisplayElement.style.borderColor = borderColor;
+        }
+
+        const selfUserListProfileList = getSelfFromUserList()
+        if(selfUserListProfileList) {
+            selfUserListProfileList.classList.add('dancing-border');
+            selfUserListProfileList.style.transform = `scale(${scaleFactor})`;
+            selfUserListProfileList.style.borderColor = borderColor;
+        }
+    } else {
+        resetStyles(profileDisplayElement, selfProfileDisplayElement);
+    }
+
+    requestAnimationFrame(() => analyzeAudio(bufferSize, dataArray, recentVolumes));
+}
+
+function resetStyles(profileDisplayElement, selfProfileDisplayElement) {
+    if (profileDisplayElement) {
+        profileDisplayElement.classList.remove('dancing-border');
+        profileDisplayElement.style.transform = `scale(1)`;
+        profileDisplayElement.style.borderColor = 'rgb(17, 18, 20)';
+    }
+    if (selfProfileDisplayElement) {
+        selfProfileDisplayElement.classList.remove('dancing-border');
+        selfProfileDisplayElement.style.transform = `scale(1)`;
+        selfProfileDisplayElement.style.borderColor = 'rgb(17, 18, 20)';
+    }
+    const selfUserListProfileList = getSelfFromUserList();
+    if(selfUserListProfileList) {
+        selfUserListProfileList.classList.remove('dancing-border');
+        selfUserListProfileList.style.transform = `scale(1)`;
+        selfUserListProfileList.style.borderColor = 'rgb(17, 18, 20)';
+    }
 }
 
 function stopCurrentMusic() {
     if (currentAudioPlayer) {
-        currentAudioPlayer.pause(); // Pause the audio
-        currentAudioPlayer.currentTime = 0; // Reset playback to the beginning
-        isAudioPlaying = false; // Update the playing state
+        currentAudioPlayer.pause(); 
+        currentAudioPlayer.currentTime = 0; 
+        isAudioPlaying = false; 
         
-        resetProfileBorders(); // Reset visual effects
+        resetProfileBorders(); 
 
         if (source) {
             source.disconnect();
-            source = null; // Clear the source reference
+            source = null;
         }
         if (analyser) {
             analyser.disconnect();
-            analyser = null; // Clear the analyser reference
+            analyser = null; 
         }
 
-        isAnalyzing = false; // Reset analysis state
+        isAnalyzing = false;
     }
 }
 
@@ -226,71 +273,23 @@ function resetProfileBorders() {
     const profileDisplayElement = document.getElementById('profile-display');
     const selfProfileDisplayElement = document.getElementById('self-profile-image');
 
-    const userProfiles = userList.querySelectorAll('.profile-container');
 
-    userProfiles.forEach(profile => {
-        if (profile.id === currentUserId) {
-            const selfProfileDisplayElementList = profile.querySelector('.profile-pic');
-            if (selfProfileDisplayElementList) {
-                selfProfileDisplayElementList.style.borderRadius = '50%'; // Set border radius
-                selfProfileDisplayElementList.style.borderColor = ''; // Set border radius
-                selfProfileDisplayElementList.style.transform = ''; // Set border radius
-            }
-        }
-    });
+    const selfProfileDisplayElementList = getSelfFromUserList();
+    if(selfProfileDisplayElementList) {
+        selfProfileDisplayElementList.style.borderRadius = '50%';
+        selfProfileDisplayElementList.style.borderColor = '';
+        selfProfileDisplayElementList.style.transform = '';
+    }
 
     if (profileDisplayElement) {
-        profileDisplayElement.style.borderRadius = '50%'; // Set border radius
-        profileDisplayElement.style.borderColor = ''; // Set border radius
-        profileDisplayElement.style.transform = ''; // Set border radius
+        profileDisplayElement.style.borderRadius = '50%';
+        profileDisplayElement.style.borderColor = '';
+        profileDisplayElement.style.transform = '';
     }
     if (selfProfileDisplayElement) {
-        selfProfileDisplayElement.style.borderRadius = '50%'; // Set border radius
-        selfProfileDisplayElement.style.borderColor = ''; // Set border radius
-        selfProfileDisplayElement.style.transform = ''; // Set border radius
-    }
-}
-
-
-let currentPlayer; 
-async function playAudio(audioUrl) {
-    try {
-        // Stop and remove the current player if it's playing
-        if (currentPlayer) {
-            currentPlayer.pause(); // Pause any currently playing audio
-            currentPlayer.remove(); // Remove the player element
-        }
-
-        // Create a new audio element
-        const audioElement = document.createElement('audio');
-        audioElement.id = 'audio-player';
-        audioElement.src = audioUrl; // Set the source directly
-        document.body.appendChild(audioElement); // Append to the body (or any container)
-
-        // Initialize the MediaElement player
-        currentPlayer = new MediaElementPlayer(audioElement, {
-            success: function(mediaElement, originalElement) {
-                mediaElement.play(); // Play the audio
-                isAudioPlaying = true;
-
-                // Setup event listeners
-                mediaElement.addEventListener('play', function() {
-                    if (isParty) {
-                        enableBorderMovement(); // Trigger your visual effects
-                    }
-                });
-
-                mediaElement.addEventListener('ended', function() {
-                    stopCurrentMusic(); // Handle when audio stops
-                });
-            },
-            error: function() {
-                console.error("Error initializing MediaElement.js player");
-            },
-        });
-
-    } catch (error) {
-        console.error("Error playing audio:", error);
+        selfProfileDisplayElement.style.borderRadius = '50%';
+        selfProfileDisplayElement.style.borderColor = '';
+        selfProfileDisplayElement.style.transform = '';
     }
 }
 
@@ -298,109 +297,99 @@ async function playAudio(audioUrl) {
 
 
 
-async function playAudio2(audio_url) {
-    const audio = new Audio(); // Create an Audio object
-
-    try {
-        const response = await fetch(audio_url);
-        if (!response.ok) {
-            throw new Error(`Failed to fetch audio: ${response.statusText}`);
-        }
-
-        const reader = response.body.getReader();
-        const stream = new ReadableStream({
-            start(controller) {
-                function push() {
-                    reader.read().then(({ done, value }) => {
-                        if (done) {
-                            controller.close();
-                            return;
-                        }
-                        controller.enqueue(value);
-                        push();
-                    });
-                }
-                push();
-            }
-        });
-
-        // Create a new blob from the stream and set it to the audio object
-        const audioBlob = await new Response(stream).blob();
-        audio.src = URL.createObjectURL(audioBlob); // Create a URL for the blob
-
-        audio.play(); // Play the audio
-        isAudioPlaying = true; // Update the flag to indicate that audio is playing
-        currentAudioPlayer = audio; // Store the current audio player
-
-        // Call enableBorderMovement() when the audio is ready to play
-        audio.onplay = function() {
-            if (isParty) {
-                enableBorderMovement(); // Only enable if party mode is on
-            }
-        };
-
-        // Reset source to null when the audio ends
-        audio.onended = function() {
-            stopCurrentMusic(); // Stop music when it ends
-        };
-
-        return audio; // Return the audio object for future reference
-    } catch (error) {
-        console.error("Error playing audio:", error);
-    }
-}
-
-
-
-let isInitializedAudio;
 function initializeMp3Yt() {
     const modal = createEl('div', { className: 'modal' });
     document.body.appendChild(modal);
 
-    const handleClick = function () {
+    const handleClick = async function () {
         if (isAudioPlaying || isInitializedAudio) {
             return; 
         }
 
+        const ytId = youtubeIds[youtubeIndex];
         document.removeEventListener('click', handleClick);
-        modal.remove();
-        
-        const params = {
-            url: 'https://www.youtube.com/watch?v=VieIk9rjCos'
-        };
+        modal.remove(); 
 
-        socket.once('mp3yt_response', function(data) {
-            if (data && data.url) { 
-                const audioUrl = data.url;
-                isAudioPlaying = true;
-                playAudio(audioUrl);
-            } else {
-                console.error("No audio URL received from the server.");
-            }
-        });
-
-        socket.emit('get_ytmp3', params);
+        isAudioPlaying = true;
         isInitializedAudio = true;
-        
+
+        const audioStream = await fetchAudioStream(ytId);
+        if (audioStream) {
+            playAudioFromStream(audioStream);
+        } else {
+            console.error('Failed to retrieve audio stream.');
+        }
     };
 
     document.addEventListener('click', handleClick);
 }
+async function fetchAudioStream(videoId) {
+    try {
+        const response = await fetch(`https://leventcord.bsite.net?url=${encodeURIComponent(videoId)}`);
+        
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
 
+        return response.body;
+    } catch (error) {
+        console.error('Error fetching audio stream:', error);
+        return null;
+    }
+}
 
+async function playAudioFromStream(audioStream) {
+    if (!audioStream) {
+        console.error('No audio stream provided');
+        return;
+    }
+
+    const mediaSource = new MediaSource();
+    const audio = new Audio();
+    currentAudioPlayer = audio;
+
+    mediaSource.addEventListener('sourceopen', async () => {
+        const sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg');
+        const reader = audioStream.getReader();
+        setTimeout(() => {
+            enableBorderMovement();
+        }, 100);
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+                mediaSource.endOfStream();
+                break;
+            }
+            await new Promise(resolve => {
+                sourceBuffer.addEventListener('updateend', resolve, { once: true });
+                sourceBuffer.appendBuffer(value);
+                
+            });
+        }
+    });
+
+    audio.src = URL.createObjectURL(mediaSource);
+    audio.play().catch(error => {
+        console.error('Error playing audio:', error);
+    });
+
+    audio.addEventListener('ended', () => {
+        URL.revokeObjectURL(audio.src);
+    });
+}
 
 
 
 
 
 function activateSoundOutput() {
-    // Function to request sound output device permissions
     async function requestSoundOutputPermissions() {
         try {
             await navigator.mediaDevices.getUserMedia({ audio: false, video: true });
-            return true; // Permission granted
+            return true; 
         } catch (error) {
-            return false; // Permission denied or error occurred
+            return false;
         }
     }
 
@@ -411,7 +400,7 @@ function activateSoundOutput() {
 
     async function updateSoundOutputOptions() {
         const dropdown = getId('sound-output-dropdown');
-        dropdown.innerHTML = ''; // Clear existing options
+        dropdown.innerHTML = ''; 
 
         try {
             const hasPermission = await requestSoundOutputPermissions();
@@ -428,7 +417,6 @@ function activateSoundOutput() {
                 });
             }
 
-            // Add default sound output option at the end
             const defaultOption = createEl('option');
             defaultOption.style.fontSize = '12px';
             defaultOption.value = 'default';
@@ -438,7 +426,6 @@ function activateSoundOutput() {
         } catch (error) {
             console.error('Error updating sound output options:', error);
 
-            // Ensure the default sound output option is added even if an error occurs
             const defaultOption = createEl('option');
             defaultOption.style.fontSize = '12px';
             defaultOption.value = 'default';
@@ -620,8 +607,8 @@ function initializeMusic() {
     document.body.appendChild(modal);
 
     const songs = [
-        '/static/sounds/musics/1.mp3',
         '/static/sounds/musics/2.mp3',
+        '/static/sounds/musics/1.mp3',
         '/static/sounds/musics/3.mp3',
         '/static/sounds/musics/4.mp3'
     ];

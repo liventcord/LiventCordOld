@@ -7,8 +7,7 @@ let isAudioPlaying = false;
 let analyser = null; 
 let source = null; 
 let isAnalyzing = false; 
-let currentPlayer; 
-let youtubeIds = ['PB4VaN_qV3Q', 'Qp3b-RXtz4w'] // 27vwjrbKFZo
+let youtubeIds = [ 'Qp3b-RXtz4w'] // 27vwjrbKFZo kakegurui
 let youtubeIndex = 0;
 
 
@@ -26,113 +25,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
 });
 
-socket.on('incoming_audio', async data => {
-
-    if (data && data.byteLength > 0) {
-        try {
-            const arrayBuffer = convertToArrayBuffer(data);
-            const decodedData = await decodeAudioDataAsync(arrayBuffer);
-            if (decodedData) {
-                playAudioBuffer(decodedData);
-            } else {
-                console.log('Decoded audio data is empty or invalid');
-            }
-        } catch (error) {
-            console.log('Error decoding audio data:');
-
-        }
-    } else {
-        console.log('Received silent or invalid audio data');
-    }
-});
-
-function convertToArrayBuffer(data) {
-    if (data instanceof ArrayBuffer) {
-        return data;
-    } else if (data.buffer instanceof ArrayBuffer) {
-        return data.buffer;
-    } else {
-        throw new Error('Unsupported data format');
-    }
-}
-
-function decodeAudioDataAsync(arrayBuffer) {
-    try {
-
-    }
-    catch(error) {
-        return new Promise((resolve, reject) => {
-            audioContext.decodeAudioData(arrayBuffer, resolve, reject);
-        });
-
-    }
-}
-
-function playAudioBuffer(audioBuffer) {
-    const source = audioContext.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(audioContext.destination);
-    source.start(0);
-}
-
-
-
-
-function enableBorderMovement() {
-    if (isAudioPlaying && currentAudioPlayer) {
-        if (!isAnalyzing) {
-            startAudioAnalysis(); 
-        }
-    }
-}
-
-function getSelfFromUserList() {
-    const userProfiles = userList.querySelectorAll('.profile-container');
-    if (!userList || !userProfiles.length) return null; 
-    for (const profile of userProfiles) {
-        if (profile.id === currentUserId) {
-            return profile.querySelector('.profile-pic');
-        }
-    }
-    return null; // Return null if no profile found
-}
-
-
-function stopAudioAnalysis() {
-    if (!isAnalyzing) return;
-
-    isAnalyzing = false;
-
-    let selfProfileDisplayElementList = getSelfFromUserList();
-    if(selfProfileDisplayElementList) {
-        selfProfileDisplayElementList.style.borderRadius = '50%';
-        
-    }
-    
-
-
-    const profileDisplayElement = document.getElementById('profile-display');
-    const selfProfileDisplayElement = document.getElementById('self-profile-image');
-    
-    resetWiggleEffect(profileDisplayElement, selfProfileDisplayElement,selfProfileDisplayElementList);
-}
-
-
 async function playAudio(audioUrl) {
     try {
-        if (currentPlayer) {
-            currentPlayer.pause(); 
-            currentPlayer.remove();
+        if (currentAudioPlayer) {
+            currentAudioPlayer.pause(); 
+            currentAudioPlayer.remove();
         }
 
         const audioElement = document.createElement('audio');
+        audioElement.crossOrigin = 'anonymous';
         currentAudioPlayer = audioElement;
         audioElement.id = 'audio-player';
-        audioElement.src = audioUrl;
+        audioElement.src = audioUrl; // Use the fetched audio URL
         audioElement.controls = true; 
         document.body.appendChild(audioElement);
-
-        currentPlayer = audioElement;
 
         audioElement.addEventListener('play', function() {
             if (isParty) {
@@ -157,16 +63,93 @@ async function playAudio(audioUrl) {
     }
 }
 
+
+function initializeMp3Yt() {
+    const modal = createEl('div', { className: 'modal' });
+    document.body.appendChild(modal);
+
+    const handleClick = async function () {
+        if (isAudioPlaying || isInitializedAudio) {
+            return; 
+        }
+
+        const ytId = youtubeIds[youtubeIndex];
+        document.removeEventListener('click', handleClick);
+        modal.remove(); 
+
+        isAudioPlaying = true;
+        isInitializedAudio = true;
+
+        const audioStreamUrl = await fetchAudioStreamUrl(ytId);
+        if (audioStreamUrl) {
+            playAudio(audioStreamUrl);
+        } else {
+            console.error('Failed to retrieve audio stream URL.');
+        }
+    };
+
+    document.addEventListener('click', handleClick);
+}
+async function fetchAudioStreamUrl(videoId) {
+    try {
+        const response = await fetch(`http://localhost:5009/ytstream/?videoId=${encodeURIComponent(videoId)}`);
+        
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        return response.url; // Use the response URL directly for the audio stream
+    } catch (error) {
+        console.error('Error fetching audio stream URL:', error);
+        return null;
+    }
+}
+
+
+
+
+
+
+
+function enableBorderMovement() {
+    if (isAudioPlaying && currentAudioPlayer) {
+        if (!isAnalyzing) {
+            startAudioAnalysis(); 
+        }
+    }
+}
+
+
+
+function stopAudioAnalysis() {
+    if (!isAnalyzing) return;
+
+    isAnalyzing = false;
+
+    let selfProfileDisplayElementList = getSelfFromUserList();
+    if(selfProfileDisplayElementList) {
+        selfProfileDisplayElementList.style.borderRadius = '50%';
+        
+    }
+    
+
+
+    const profileDisplayElement = document.getElementById('profile-display');
+    const selfProfileDisplayElement = document.getElementById('self-profile-image');
+    
+    resetWiggleEffect(profileDisplayElement, selfProfileDisplayElement,selfProfileDisplayElementList);
+}
+
 function startAudioAnalysis() {
     audioContext = new (window.AudioContext || window.webkitAudioContext)();
 
-    if (!(currentPlayer instanceof HTMLMediaElement)) {
-        console.error('currentPlayer is not a valid HTMLMediaElement.');
+    if (!(currentAudioPlayer instanceof HTMLMediaElement)) {
+        console.error('currentAudioPlayer is not a valid HTMLMediaElement.');
         return;
     }
 
     analyser = audioContext.createAnalyser();
-    const source = audioContext.createMediaElementSource(currentPlayer);
+    const source = audioContext.createMediaElementSource(currentAudioPlayer);
     source.connect(analyser);
     analyser.connect(audioContext.destination);
 
@@ -178,7 +161,16 @@ function startAudioAnalysis() {
 
     analyzeAudio(bufferSize, dataArray, recentVolumes); 
 }
-
+function getSelfFromUserList() {
+    const userProfiles = userList.querySelectorAll('.profile-container');
+    if (!userList || !userProfiles.length) return null; 
+    for (const profile of userProfiles) {
+        if (profile.id === currentUserId) {
+            return profile.querySelector('.profile-pic');
+        }
+    }
+    return null; // Return null if no profile found
+}
 function analyzeAudio(bufferSize, dataArray, recentVolumes) {
     if (!isAnalyzing || !analyser) return; 
 
@@ -296,93 +288,6 @@ function resetProfileBorders() {
 
 
 
-
-function initializeMp3Yt() {
-    const modal = createEl('div', { className: 'modal' });
-    document.body.appendChild(modal);
-
-    const handleClick = async function () {
-        if (isAudioPlaying || isInitializedAudio) {
-            return; 
-        }
-
-        const ytId = youtubeIds[youtubeIndex];
-        document.removeEventListener('click', handleClick);
-        modal.remove(); 
-
-        isAudioPlaying = true;
-        isInitializedAudio = true;
-
-        const audioStream = await fetchAudioStream(ytId);
-        if (audioStream) {
-            playAudioFromStream(audioStream);
-        } else {
-            console.error('Failed to retrieve audio stream.');
-        }
-    };
-
-    document.addEventListener('click', handleClick);
-}
-async function fetchAudioStream(videoId) {
-    try {
-        const response = await fetch(`http://localhost:5009/ytstream/?videoId=${encodeURIComponent(videoId)}`);
-        
-        if (!response.ok) {
-            throw new Error('Network response was not ok');
-        }
-
-        return response.body;
-    } catch (error) {
-        console.error('Error fetching audio stream:', error);
-        return null;
-    }
-}
-
-async function playAudioFromStream(audioStream) {
-    if (!audioStream) {
-        console.error('No audio stream provided');
-        return;
-    }
-
-    const mediaSource = new MediaSource();
-    const audio = new Audio();
-    currentAudioPlayer = audio;
-
-    mediaSource.addEventListener('sourceopen', async () => {
-        const sourceBuffer = mediaSource.addSourceBuffer('audio/mpeg');
-        const reader = audioStream.getReader();
-        setTimeout(() => {
-            enableBorderMovement();
-        }, 100);
-
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) {
-                mediaSource.endOfStream();
-                break;
-            }
-            await new Promise(resolve => {
-                sourceBuffer.addEventListener('updateend', resolve, { once: true });
-                sourceBuffer.appendBuffer(value);
-                
-            });
-        }
-    });
-
-    audio.src = URL.createObjectURL(mediaSource);
-    audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-    });
-
-    audio.addEventListener('ended', () => {
-        URL.revokeObjectURL(audio.src);
-    });
-}
-
-
-
-
-
 function activateSoundOutput() {
     async function requestSoundOutputPermissions() {
         try {
@@ -468,11 +373,9 @@ async function sendAudioData() {
     try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         const mediaRecorder = new MediaRecorder(stream);
-
         mediaRecorder.ondataavailable = async (e) => {
 
         };
-
         mediaRecorder.start();
 
     } catch (err) {
@@ -480,14 +383,13 @@ async function sendAudioData() {
     }
 }
 
-
 function activateMicAndCamera() {
     async function requestMediaPermissions() {
         try {
             await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
-            return true; // Permission granted
+            return true; 
         } catch (error) {
-            return false; // Permission denied or error occurred
+            return false;
         }
     }
 
@@ -497,9 +399,9 @@ function activateMicAndCamera() {
     }
     async function updateMediaOptions() {
         const micDropdown = getId('sound-mic-dropdown');
-        micDropdown.innerHTML = ''; // Clear existing options
+        micDropdown.innerHTML = '';
         const cameraDropdown = getId('camera-dropdown');
-        cameraDropdown.innerHTML = ''; // Clear existing options
+        cameraDropdown.innerHTML = ''; 
         try {
             const hasPermission = await requestMediaPermissions();
 
@@ -519,7 +421,6 @@ function activateMicAndCamera() {
                 });
             }
 
-            // Add default microphone and camera options at the end
             const defaultMicOption = createEl('option',{fontSize:'12px',value:'default'});
             defaultMicOption.textContent = 'Default Microphone';
             micDropdown.appendChild(defaultMicOption);
@@ -531,7 +432,6 @@ function activateMicAndCamera() {
         } catch (error) {
             console.error('Error updating media options:', error);
 
-            // Ensure the default options are added even if an error occurs
             const defaultMicOption = createEl('option',{fontSize:'12px',value:'default'});
             defaultMicOption.textContent = 'Default Microphone';
             micDropdown.appendChild(defaultMicOption);
@@ -636,3 +536,56 @@ function initializeMusic() {
         modal.style.display = 'none'; 
     });
 }
+
+
+socket.on('incoming_audio', async data => {
+
+    if (data && data.byteLength > 0) {
+        try {
+            const arrayBuffer = convertToArrayBuffer(data);
+            const decodedData = await decodeAudioDataAsync(arrayBuffer);
+            if (decodedData) {
+                playAudioBuffer(decodedData);
+            } else {
+                console.log('Decoded audio data is empty or invalid');
+            }
+        } catch (error) {
+            console.log('Error decoding audio data:');
+
+        }
+    } else {
+        console.log('Received silent or invalid audio data');
+    }
+});
+
+function convertToArrayBuffer(data) {
+    if (data instanceof ArrayBuffer) {
+        return data;
+    } else if (data.buffer instanceof ArrayBuffer) {
+        return data.buffer;
+    } else {
+        throw new Error('Unsupported data format');
+    }
+}
+
+function decodeAudioDataAsync(arrayBuffer) {
+    try {
+
+    }
+    catch(error) {
+        return new Promise((resolve, reject) => {
+            audioContext.decodeAudioData(arrayBuffer, resolve, reject);
+        });
+
+    }
+}
+
+function playAudioBuffer(audioBuffer) {
+    const source = audioContext.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(audioContext.destination);
+    source.start(0);
+}
+
+
+

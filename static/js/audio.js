@@ -325,7 +325,7 @@ function initializeMp3Yt() {
 }
 async function fetchAudioStream(videoId) {
     try {
-        const response = await fetch(`http://localhost:5009?videoId=${encodeURIComponent(videoId)}`);
+        const response = await fetch(`http://localhost:5009/ytstream/?videoId=${encodeURIComponent(videoId)}`);
         
         if (!response.ok) {
             throw new Error('Network response was not ok');

@@ -1258,14 +1258,14 @@ def get_old_messages(data):
     }, broadcast=False)
 
 
-def save_attachment_file(file, file_id, guild_id,channel_id,extension):
+def save_attachment_file(file, file_name, guild_id,channel_id,extension,attachment_id):
     if is_using_pg:
-        postgres_manager.upload_attachment_file(file_id,user_id, file.read(), extension,guild_id,channel_id)
+        postgres_manager.upload_attachment_file(filename,user_id, file.read(), extension,guild_id,channel_id,file_id)
         return
     uploads_path = os.path.join(project_path, "uploads", "attachments")
     if not os.path.exists(uploads_path):
         os.makedirs(uploads_path)
-    file_path = os.path.join(uploads_path, file_id + '.' + extension)
+    file_path = os.path.join(uploads_path, file_name + '.' + extension)
     with open(file_path, "wb") as f:
         f.write(file.read())
 
@@ -1284,7 +1284,7 @@ def upload_file():
         return jsonify({'error': 'Empty file name'}), 400
     attachment_id = create_random_id()
     extension = file.filename.split(".")[-1]
-    save_attachment_file(file,attachment_id,guild_id,channel_id,extension)
+    save_attachment_file(file,filename,guild_id,channel_id,extension,attachment_id)
     def create_attachment_urls(ids):
         urls = []
         for idx, _id in enumerate(ids, start=1):

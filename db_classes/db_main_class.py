@@ -167,11 +167,14 @@ class DatabaseManager:
         self.is_remote = False
         self.password = os.getenv('PSQL_PASS') if self.is_remote else os.getenv('PSQL_PASS_LOCAL')
         self.host = os.getenv('REMOTE_HOST') if self.is_remote else os.getenv('LOCAL_HOST')
-        self.port='5432'
+        self.user = os.getenv('REMOTE_USER') if self.is_remote else os.getenv('LOCAL_USER')
+        self.database = os.getenv('REMOTE_DATABASE') if self.is_remote else os.getenv('LOCAL_DATABASE')
+        self.port = '18819' if self.is_remote else '5432'
+
         if self.is_post_gress:
             try:      
-                self.connection_pool = pool.SimpleConnectionPool(1, 50,  
-                    user='liventcord',password=self.password,host=self.host,port=self.port, database='liventdb'
+                self.connection_pool = pool.SimpleConnectionPool(1, 5,  
+                    user=self.user,password=self.password,host=self.host,port=self.port, database=self.database
                 )
             except Exception as e:
                 db_logger.exception(f"Error initializing connection pool: {e}")
@@ -289,7 +292,7 @@ class DatabaseManager:
         try:
             conn = self.connect()
             if not conn:
-                logger.exception("Connection is ignored")
+                print("Connection is ignored")
                 return
 
             cursor = conn.cursor()

@@ -83,9 +83,10 @@ class PostGresFileManager(DatabaseManager):
             else:
                 truncated.append(param)
         return truncated
-    def upload_file(self, file_name, _file_type, content, extension, guild_id=None,channel_id=None,user_id=None,is_guild_image=False):
+    def upload_file(self, file_name, _file_type, content, extension, guild_id=None,channel_id=None,user_id=None,is_guild_image=False, file_id=None):
         
-        file_id = guild_id if guild_id and is_guild_image else create_random_id()
+        if not file_id:
+            file_id = guild_id if guild_id and is_guild_image else create_random_id()
         
         table_name = self.get_table_name(_file_type)
         check_query = f"SELECT COUNT(*) FROM {table_name} WHERE file_id = %s"
@@ -120,8 +121,8 @@ class PostGresFileManager(DatabaseManager):
 
 
 
-    def upload_attachment_file(self,file_name,user_id,file_content,extension,guild_id,channel_id):
-        self.upload_file(file_name,FileType.ATTACHMENT,file_content,extension,guild_id,channel_id,user_id=user_id)
+    def upload_attachment_file(self,file_name,user_id,file_content,extension,guild_id,channel_id,file_id):
+        self.upload_file(file_name,FileType.ATTACHMENT,file_content,extension,guild_id,channel_id,user_id=user_id,file_id=file_id)
         
     def upload_emoji_file(self,file_name,user_id,file_content,extension,guild_id):
         self.upload_file(file_name,FileType.EMOJI,file_content,extension,guild_id,user_id=user_id)   

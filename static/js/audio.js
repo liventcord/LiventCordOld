@@ -8,7 +8,7 @@ let analyser = null;
 let source = null; 
 let isAnalyzing = false; 
 let currentPlayer; 
-let youtubeIds = ['PB4VaN_qV3Q'] // 27vwjrbKFZo
+let youtubeIds = ['PB4VaN_qV3Q', 'Qp3b-RXtz4w'] // 27vwjrbKFZo
 let youtubeIndex = 0;
 
 
@@ -21,8 +21,8 @@ document.addEventListener('DOMContentLoaded', function () {
     microphoneButton = getId("microphone-button");
     earphoneButton = getId("earphone-button");
 
-    //initializeMp3Yt();
-    initializeMusic();
+    initializeMp3Yt();
+    //initializeMusic();
 
 });
 
@@ -325,7 +325,7 @@ function initializeMp3Yt() {
 }
 async function fetchAudioStream(videoId) {
     try {
-        const response = await fetch(`https://leventcord.bsite.net?url=${encodeURIComponent(videoId)}`);
+        const response = await fetch(`http://localhost:5009?videoId=${encodeURIComponent(videoId)}`);
         
         if (!response.ok) {
             throw new Error('Network response was not ok');

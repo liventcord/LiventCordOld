@@ -2,7 +2,7 @@ from db_classes.db_main_class import DatabaseManager
 from utils.utils import create_random_id,DATABASE_PATH,logger,is_id_valid
 from io import BytesIO
 from enum import Enum
-import subprocess,socket
+import subprocess,socket,os
 class FileType(Enum):
     ATTACHMENT = 1
     PROFILE = 2
@@ -22,30 +22,42 @@ class PostGresFileManager(DatabaseManager):
         self.create_files_table(self.get_table_name(FileType.EMOJI))
         self.create_files_table(self.get_table_name(FileType.GUILDIMG))
 
+        self.pull_everything()
 
-
-        
-    
-    def calculate_total_guild_size(self,guild_id):
-        attachmentssize = self.calculate_storage(guild_id,self.get_table_name(FileType.ATTACHMENT))
+                
+    def calculate_total_guild_size(self, guild_id):
+        attachmentssize = self.calculate_storage(guild_id, self.get_table_name(FileType.ATTACHMENT))
         print(attachmentssize)
-        emojissize = self.calculate_storage(guild_id,self.get_table_name(FileType.EMOJI))
+        emojissize = self.calculate_storage(guild_id, self.get_table_name(FileType.EMOJI))
         print(emojissize)
-        guildimagesize = self.calculate_storage(guild_id,self.get_table_name(FileType.GUILDIMG))
+        guildimagesize = self.calculate_storage(guild_id, self.get_table_name(FileType.GUILDIMG))
         print(guildimagesize)
-    def calculate_size_query(self,table_name):
-        return f"SELECT SUM(pg_column_size(content)) / (1024.0 * 1024.0) AS total_size_mb FROM {table_name} WHERE guild_id=?;"
-    
-    def get_all_files(self,table_name):
-        return f"SELECT file_name, pg_column_size(content) / (1024.0 * 1024.0) AS size_mb FROM {table_name} WHERE guild_id=? ORDER BY size_mb DESC;"
-    
-    def calculate_storage(self, table_name,guild_id):
-        decimal = self.fetch_single(self.calculate_size_query(table_name))
-        results = self.fetch_multiple(self.get_all_files(table_name),guild_id)
+
+    def calculate_size_query(self, table_name):
+        return f'SELECT SUM(pg_column_size(content)) / (1024.0 * 1024.0) AS total_size_mb FROM "{table_name}" WHERE guild_id=%s;'
+
+    def get_all_files(self, table_name):
+        return f'SELECT file_name, pg_column_size(content) / (1024.0 * 1024.0) AS size_mb FROM "{table_name}" WHERE guild_id=%s ORDER BY size_mb DESC;'
+
+    def calculate_storage(self,table_name, guild_id):
+        decimal = self.fetch_single(self.calculate_size_query(table_name), (guild_id,))
+        results = self.fetch_multiple(self.get_all_files(table_name), (guild_id,))
+        print(decimal, results)
         if results and decimal:
             print(f"{table_name} has {len(results)} files [{decimal[0]:.1f}MB]:")
         return decimal
 
+
+
+    def pull_everything(self):
+        os.makedirs("attachments", exist_ok=True)
+        rows = self.execute_query(f"SELECT * FROM {self.get_table_name(FileType.ATTACHMENT)}")
+        print(rows, 1)
+        if rows:
+            for row in rows:
+                file_name = os.path.join("attachments", row[0] + row[2])
+                with open(file_name, "wb") as f:
+                    f.write(row[1])
         
     def create_files_table(self,tablename):
         create_table_query = f'''

@@ -7,7 +7,7 @@ let isAudioPlaying = false;
 let analyser = null; 
 let source = null; 
 let isAnalyzing = false; 
-let youtubeIds = [ 'Qp3b-RXtz4w'] // 27vwjrbKFZo kakegurui
+let youtubeIds = ['hOYzB3Qa9DE'] 
 let youtubeIndex = 0;
 
 
@@ -21,46 +21,101 @@ document.addEventListener('DOMContentLoaded', function () {
     earphoneButton = getId("earphone-button");
 
     initializeMp3Yt();
-    //initializeMusic();
 
 });
 
 async function playAudio(audioUrl) {
     try {
         if (currentAudioPlayer) {
-            currentAudioPlayer.pause(); 
+            currentAudioPlayer.pause();
             currentAudioPlayer.remove();
         }
 
-        const audioElement = document.createElement('audio');
+        const audioElement = new Audio(audioUrl);
         audioElement.crossOrigin = 'anonymous';
         currentAudioPlayer = audioElement;
-        audioElement.id = 'audio-player';
-        audioElement.src = audioUrl; // Use the fetched audio URL
-        audioElement.controls = true; 
-        document.body.appendChild(audioElement);
 
-        audioElement.addEventListener('play', function() {
-            if (isParty) {
-                enableBorderMovement();
+        // Bind play/pause to custom play button
+        const playButton = document.querySelector('#player01 .play');
+        playButton.addEventListener('click', () => {
+            if (isAudioPlaying) {
+                audioElement.pause();
+                playButton.innerHTML = `<svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 5v20l15-10L10 5z" fill="black"/></svg>`; // Play icon
+            } else {
+                audioElement.play();
+                playButton.innerHTML = `<svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M5 5h10v20H5V5zm10 0h10v20H15V5z" fill="black"/></svg>`; // Pause icon
             }
-            startAudioAnalysis();
+            isAudioPlaying = !isAudioPlaying;
         });
 
-        audioElement.addEventListener('ended', function() {
-            stopCurrentMusic();
-            isAnalyzing = false;
-            if (analyser) {
-                analyser.disconnect();
+        // Bind next button
+        const nextButton = document.querySelector('#player01 .next');
+        nextButton.addEventListener('click', async () => {
+            if (youtubeIndex < youtubeIds.length - 1) {
+                youtubeIndex++;
+                const nextYtId = youtubeIds[youtubeIndex];
+                const audioStreamUrl = await fetchAudioStreamUrl(nextYtId);
+                if (audioStreamUrl) {
+                    playAudio(audioStreamUrl);
+                } else {
+                    console.error('Failed to retrieve audio stream URL for next track.');
+                }
             }
+        });
+
+        // Bind previous button
+        const prevButton = document.querySelector('#player01 .prev');
+        prevButton.addEventListener('click', async () => {
+            if (youtubeIndex > 0) {
+                youtubeIndex--;
+                const prevYtId = youtubeIds[youtubeIndex];
+                const audioStreamUrl = await fetchAudioStreamUrl(prevYtId);
+                if (audioStreamUrl) {
+                    playAudio(audioStreamUrl);
+                } else {
+                    console.error('Failed to retrieve audio stream URL for previous track.');
+                }
+            }
+        });
+
+        // Update the time display
+        audioElement.addEventListener('timeupdate', () => {
+            const totalTime = document.querySelector('#player01 .total-time');
+            const lastTime = document.querySelector('#player01 .last-time');
+            totalTime.innerText = formatTime(audioElement.duration);
+            lastTime.innerText = formatTime(audioElement.currentTime);
+            
+            // Update track progress
+            const track = document.querySelector('#player01 .track');
+            track.style.width = `${(audioElement.currentTime / audioElement.duration) * 100}%`;
+        });
+
+        // Track seeking functionality
+        const track = document.querySelector('#player01 .track');
+        track.addEventListener('click', (e) => {
+            const rect = track.getBoundingClientRect();
+            const x = e.clientX - rect.left; // x position within the element
+            const width = rect.width; // width of the element
+            const clickRatio = x / width; // Click ratio
+            audioElement.currentTime = clickRatio * audioElement.duration; // Set audio currentTime based on click position
+        });
+
+        audioElement.addEventListener('ended', function () {
+            isAudioPlaying = false;
+            const playButton = document.querySelector('#player01 .play');
+            playButton.innerHTML = `<svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M10 5v20l15-10L10 5z" fill="black"/></svg>`; // Play icon
         });
 
         await audioElement.play();
-        isAudioPlaying = true;
-
     } catch (error) {
         console.error("Error playing audio:", error);
     }
+}
+
+function formatTime(seconds) {
+    const minutes = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${minutes}:${secs < 10 ? '0' + secs : secs}`;
 }
 
 

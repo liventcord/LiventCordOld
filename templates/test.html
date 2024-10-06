@@ -1,34 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YouTube Audio Stream</title>
-</head>
-<body>
-    <h1>YouTube Audio Streamer</h1>
-    <input type="text" id="videoId" placeholder="Enter YouTube Video ID" />
-    <button id="streamButton">Stream Audio</button>
-    <audio id="audioPlayer" controls></audio>
+<div class="controls">
+    <style>
+        body {
+            background:firebrick;
+        }
+    </style>
+   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><path d="M6 3h4v18H6zM14 3h4v18h-4z"/></svg>
 
-    <script>
-        document.getElementById('streamButton').addEventListener('click', async () => {
-            const videoId = document.getElementById('videoId').value;
-            if (!videoId) {
-                alert("Please enter a video ID.");
-                return;
-            }
-
-            try {
-                const audioPlayer = document.getElementById('audioPlayer');
-                audioPlayer.src = `http://localhost:5009/ytstream?videoId=${encodeURIComponent(videoId)}`;
-                audioPlayer.play();
-
-            } catch (error) {
-                console.error('Error fetching audio stream:', error);
-                alert("Failed to stream audio. Please check the console for more details.");
-            }
-        });
-    </script>
-</body>
-</html>
+</div>

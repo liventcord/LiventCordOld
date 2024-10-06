@@ -1896,10 +1896,3 @@ th {
     color: rgb(181, 186, 193 );
 }
 
-#audio-player {
-    width: 200px;
-    bottom: 60px;
-    position: fixed;
-    z-index: 1;
-    left: 95px;
-}
